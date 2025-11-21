@@ -1,4 +1,5 @@
-# src/molml_mcp/resources.py
+""" Logistics for storing and loading resources."""
+
 import secrets
 from datetime import datetime
 from pathlib import Path
