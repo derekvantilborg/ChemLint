@@ -1,0 +1,15 @@
+[project]
+name = "molml_mcp"
+version = "0.1.0"
+requires-python = ">=3.13"
+
+dependencies = [
+    "mcp[cli]>=1.20.0",
+    "rdkit>=2025.9.1",
+    "numpy",
+    "scikit-learn",
+    "pandas",
+]
+
+[tool.uv]
+index-strategy = "eager"
