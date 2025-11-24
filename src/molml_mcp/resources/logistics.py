@@ -55,13 +55,41 @@ def _load_resource(resource_id: str) -> Any:
 
     return load_fn(path)
 
-def load_csv_dataset(file_path: str) -> dict:
-    """ Load a CSV dataset from the given file path and store it. Return the corresponding resource_id + data preview."""
+def load_csv(file_path: str) -> dict:
+    """
+    Load a CSV file from a local file path provided by the MCP client.
+    
+    This tool reads the CSV into a tabular dataset, stores it as an internal
+    resource, and returns a new `resource_id` together with basic dataset
+    information. No assumptions are made about the meaning of columns.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to a CSV file supplied by the client (e.g. from a drag-and-drop
+        upload). The file is read exactly as provided.
+
+    Returns
+    -------
+    dict
+        {
+            "resource_id": str,     # identifier for the stored dataset
+            "n_rows": int,          # number of rows in the dataset
+            "columns": list[str],   # all column names detected in the CSV
+            "preview": list[dict],  # first 5 rows as records (for inspection)
+        }
+
+    Notes
+    -----
+    - This tool only loads and stores the uploaded file. It does not perform
+      any cleaning, type inference, or column guessing.
+    - Subsequent tools should operate using the returned `resource_id`.
+    """
     import pandas as pd
 
     df = pd.read_csv(file_path)
 
-    rid = _store_resource(df, "dataset")
+    rid = _store_resource(df, "csv")
 
     return {
         "resource_id": rid,
@@ -69,5 +97,3 @@ def load_csv_dataset(file_path: str) -> dict:
         "columns": list(df.columns),
         "preview": df.head(5).to_dict(orient="records"),
     }
-
-
