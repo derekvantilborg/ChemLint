@@ -14,3 +14,6 @@
 #     tools.extend(get_protein_tools())
 #     # later: tools.extend(get_new_subpackage_tools())
 #     return tools
+
+
+from molml_mcp.tools.core_mol.smiles_ops import canonicalize_smiles
