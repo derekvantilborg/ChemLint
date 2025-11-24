@@ -1,0 +1,6 @@
+smiles,label,description
+C(C)O,1,"Small alcohol molecule"
+OC1=CC=CC=C1,0,"Aromatic compound with hydroxyl group"
+N(CC)CC,, "Missing label for testing NaN handling"
+CCC(=O)O,1,"Carboxylic acid derivative"
+C(C)(C)C,0,"Branched alkane"

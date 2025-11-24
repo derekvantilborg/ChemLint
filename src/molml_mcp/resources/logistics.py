@@ -55,3 +55,19 @@ def _load_resource(resource_id: str) -> Any:
 
     return load_fn(path)
 
+def load_csv_dataset(file_path: str) -> dict:
+    """ Load a CSV dataset from the given file path and store it. Return the corresponding resource_id + data preview."""
+    import pandas as pd
+
+    df = pd.read_csv(file_path)
+
+    rid = _store_resource(df, "dataset")
+
+    return {
+        "resource_id": rid,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "preview": df.head(5).to_dict(orient="records"),
+    }
+
+
