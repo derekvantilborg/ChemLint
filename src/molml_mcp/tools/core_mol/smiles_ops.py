@@ -1,5 +1,5 @@
 from rdkit.Chem import MolFromSmiles, MolToSmiles
-from molml_mcp.resources.logistics import _load_resource, _store_resource
+from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 
 def canonicalize_smiles(smiles: list[str]) -> list[str]: 
     """ Convert a SMILES string to its canonical form. Failed conversions are treated as None."""

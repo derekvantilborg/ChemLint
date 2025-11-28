@@ -1,14 +1,3 @@
-
-import sys
-from pathlib import Path
-
-# Ensure the project src directory is on sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]   # .../molml_mcp
-SRC_DIR = PROJECT_ROOT / "src"
-
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
 import os
 from pathlib import Path
 

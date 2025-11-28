@@ -1,7 +1,7 @@
 from mcp.server.fastmcp import FastMCP
 
 # All tools we want to expose via the MCP server
-from molml_mcp.resources.logistics import get_all_resource_functions
+from molml_mcp.infrastructure.resources import get_all_resource_functions
 from molml_mcp.tools import canonicalize_smiles, canonicalize_smiles_dataset
 
 # create an MCP server 
