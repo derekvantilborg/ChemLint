@@ -8,13 +8,16 @@ import inspect
 from functools import wraps
 
 from molml_mcp.resources.supported_resource_types import TYPE_REGISTRY
-from molml_mcp.resources import DATA_ROOT, LOG_PATH
+from molml_mcp.config import DATA_ROOT, LOG_PATH
 
-# import pandas as pd
-# df = pd.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
-# resource_id = store_resource(df, "csv")
-# load_resource(resource_id)
 
+def get_all_resource_functions():
+    """Return a list of all resource-related functions available."""
+    return [
+        store_csv_as_dataset,
+        store_csv_as_dataset_from_text,
+        # Add other resource functions here as they are implemented
+    ]
 
 def _generate_id(type_tag: str) -> str:
     """Generate a unique resource ID with timestamp, type tag, and random ID component."""
@@ -59,6 +62,88 @@ def _load_resource(resource_id: str) -> Any:
     return load_fn(path)
 
 
+def loggable(func):
+    """
+    Decorator that logs:
+      - function name
+      - first line of docstring
+      - ORIGINAL inputs (before mutation)
+      - full return value (outputs)
+
+    Writes to `server.log` in a human-readable, multiline format.
+    """
+
+    def _fmt(val):
+        """Compact representation to avoid huge log lines."""
+        try:
+            # Truncate long text fields
+            if isinstance(val, str):
+                if len(val) > 100:
+                    return val[:97] + "..."
+                return val
+            
+            # Represent array-like objects compactly
+            if hasattr(val, "shape"):  # e.g. pandas DataFrame / numpy array
+                return f"<Array-like shape={val.shape}>"
+            
+            # Represent large collections compactly
+            if isinstance(val, (list, dict, tuple, set)) and len(val) > 30:
+                return f"<{type(val).__name__} len={len(val)}>"
+            return repr(val)
+        except Exception:
+            return "<unprintable>"
+
+    sig = inspect.signature(func)
+    doc = inspect.getdoc(func)
+
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Capture ORIGINAL inputs as passed into the function
+        bound = sig.bind(*args, **kwargs)
+        bound.apply_defaults()
+        original_inputs = dict(bound.arguments)
+
+        # Time the function execution
+        start_time = datetime.now()
+        result = func(*args, **kwargs)
+        end_time = datetime.now()
+        elapsed_time = (end_time - start_time).total_seconds()
+
+        # Prepare docstring line
+        if doc:
+            docstring_first_line = doc.strip().split("\n")[0]
+        else:
+            docstring_first_line = "Description not available."
+
+        # Format inputs and outputs
+        inputs_str = {k: _fmt(v) for k, v in original_inputs.items()}
+
+        if isinstance(result, dict):
+            outputs_str = {k: _fmt(v) for k, v in result.items()}
+        else:
+            outputs_str = _fmt(result)
+
+        # Build log entry in your original style
+        entry = (
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S:\n")
+            + f"\tFunction: {func.__name__}()\n"
+            + f"\tDescription: {docstring_first_line}\n"
+            + f"\tInputs: {inputs_str}\n"
+            + f"\tOutputs: {outputs_str}\n"
+            + f"\tExecution Time: {elapsed_time:.4f}s\n"
+        )
+
+        # Write to log file
+        with LOG_PATH.open("a", encoding="utf-8") as f:
+            f.write(entry)
+
+        return result
+
+    return wrapper
+
+
+@loggable
 def store_csv_as_dataset(file_path: str) -> dict:
     """
     Store a CSV file from a local file path provided by the MCP client.
@@ -103,128 +188,94 @@ def store_csv_as_dataset(file_path: str) -> dict:
     }
 
 
-def load_csv_dataset(file_path: str, smiles_column: str | None = None) -> dict:
-    """Load a CSV file into a dataset store; optionally mark a SMILES column; return {'resource_id', 'n_rows', 'columns', 'preview'}."""
-
-def load_sdf_dataset(file_path: str) -> dict:
-    """Load an SDF file into a dataset store, extracting structures and basic fields; return {'resource_id', 'n_rows', 'columns', 'preview'}."""
-
-def save_dataset_to_csv(resource_id: str, file_path: str, include_hidden: bool = False) -> dict:
-    """Save a dataset to a CSV file and return {'file_path', 'n_rows', 'n_columns'}."""
-
-def save_dataset_to_csv(resource_id: str, file_path: str, include_hidden: bool = False) -> dict:
-    """Save a dataset to a CSV file and return {'file_path', 'n_rows', 'n_columns'}."""
-
-def select_dataset_columns(resource_id: str, columns: list[str], inplace: bool = False) -> dict:
-    """Keep only specified columns; return {'resource_id', 'columns'} (new or same id depending on inplace)."""
-
-def drop_dataset_columns(resource_id: str, columns: list[str], inplace: bool = False) -> dict:
-    """Drop specified columns; return {'resource_id', 'dropped_columns', 'columns'}."""
-
-def filter_dataset_rows(resource_id: str, expression: str, inplace: bool = False) -> dict:
-    """Filter rows using a boolean expression (e.g. pandas-style); return {'resource_id', 'n_rows_before', 'n_rows_after'}."""
-
-def merge_datasets_on_key(
-    left_resource_id: str,
-    right_resource_id: str,
-    on: str,
-    how: str = "inner"
-) -> dict:
-    """Merge two datasets on a key column; return {'resource_id', 'n_rows', 'n_columns', 'how'}."""
-
-def concatenate_datasets(resource_ids: list[str]) -> dict:
-    """Concatenate multiple datasets row-wise; return {'resource_id', 'n_rows', 'source_ids'}."""
-
-
-
-
-
-
-def loggable(func):
-    """
-    Decorator that logs:
-      - function name
-      - first line of docstring
-      - ORIGINAL inputs (before mutation)
-      - full return value (outputs)
-
-    Writes to `server.log` in a human-readable, multiline format.
-    """
-
-    def _fmt(val):
-        """Compact representation to avoid huge log lines."""
-        try:
-            if hasattr(val, "shape"):  # e.g. pandas DataFrame / numpy array
-                return f"<Array-like shape={val.shape}>"
-            if isinstance(val, (list, dict, tuple, set)) and len(val) > 30:
-                return f"<{type(val).__name__} len={len(val)}>"
-            return repr(val)
-        except Exception:
-            return "<unprintable>"
-
-    sig = inspect.signature(func)
-    doc = inspect.getdoc(func)
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        # Capture ORIGINAL inputs as passed into the function
-        bound = sig.bind(*args, **kwargs)
-        bound.apply_defaults()
-        original_inputs = dict(bound.arguments)
-
-        # Call the actual function
-        result = func(*args, **kwargs)
-
-        # Prepare docstring line
-        if doc:
-            docstring_first_line = doc.strip().split("\n")[0]
-        else:
-            docstring_first_line = "Description not available."
-
-        # Format inputs and outputs
-        inputs_str = {k: _fmt(v) for k, v in original_inputs.items()}
-
-        if isinstance(result, dict):
-            outputs_str = {k: _fmt(v) for k, v in result.items()}
-        else:
-            outputs_str = _fmt(result)
-
-        # Build log entry in your original style
-        entry = (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S:\n")
-            + f"\tFunction: {func.__name__}()\n"
-            + f"\tDescription: {docstring_first_line}\n"
-            + f"\tInputs: {inputs_str}\n"
-            + f"\tOutputs: {outputs_str}\n"
-        )
-
-        # Write to log file
-        with LOG_PATH.open("a", encoding="utf-8") as f:
-            f.write(entry)
-
-        return result
-
-    return wrapper
-
-
-
-
 @loggable
-def function_A(test_input:int, *args, **kwargs):
-    """ Example function A to demonstrate logging. """
+def store_csv_as_dataset_from_text(csv_content: str) -> dict:
+    """
+    Store CSV data from content provided by the MCP client.
+    
+    Parameters
+    ----------
+    csv_content : str
+        The actual CSV file content as a string. We will use StringIO, so the content should be formatted as a valid CSV.
+    filename : str
+        Optional filename for reference/logging
+    
+    Returns
+    -------
+    dict
+        Dataset metadata
+    """
+    import pandas as pd
+    from io import StringIO
+    
+    # Read CSV from string content
+    df = pd.read_csv(StringIO(csv_content))
+    
+    rid = _store_resource(df, "csv")
+    
+    return {
+        "resource_id": rid,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "preview": df.head(5).to_dict(orient="records"),
+    }
 
-    test_input=1234
-
-    func_in = log_info({'output_a': 'A'})
-
-    # saved_args = {**locals()} 
-
-    # print(f"Function name = '{func_name()}'")
-    # print(f'saved_args = {saved_args}')
-
-    print("Function A called")
 
 
-function_A(test_input=123, extra_param="hello")
+
+# def load_csv_dataset(file_path: str, smiles_column: str | None = None) -> dict:
+#     """Load a CSV file into a dataset store; optionally mark a SMILES column; return {'resource_id', 'n_rows', 'columns', 'preview'}."""
+
+# def load_sdf_dataset(file_path: str) -> dict:
+#     """Load an SDF file into a dataset store, extracting structures and basic fields; return {'resource_id', 'n_rows', 'columns', 'preview'}."""
+
+# def save_dataset_to_csv(resource_id: str, file_path: str, include_hidden: bool = False) -> dict:
+#     """Save a dataset to a CSV file and return {'file_path', 'n_rows', 'n_columns'}."""
+
+# def save_dataset_to_csv(resource_id: str, file_path: str, include_hidden: bool = False) -> dict:
+#     """Save a dataset to a CSV file and return {'file_path', 'n_rows', 'n_columns'}."""
+
+# def select_dataset_columns(resource_id: str, columns: list[str], inplace: bool = False) -> dict:
+#     """Keep only specified columns; return {'resource_id', 'columns'} (new or same id depending on inplace)."""
+
+# def drop_dataset_columns(resource_id: str, columns: list[str], inplace: bool = False) -> dict:
+#     """Drop specified columns; return {'resource_id', 'dropped_columns', 'columns'}."""
+
+# def filter_dataset_rows(resource_id: str, expression: str, inplace: bool = False) -> dict:
+#     """Filter rows using a boolean expression (e.g. pandas-style); return {'resource_id', 'n_rows_before', 'n_rows_after'}."""
+
+# def merge_datasets_on_key(
+#     left_resource_id: str,
+#     right_resource_id: str,
+#     on: str,
+#     how: str = "inner"
+# ) -> dict:
+#     """Merge two datasets on a key column; return {'resource_id', 'n_rows', 'n_columns', 'how'}."""
+
+# def concatenate_datasets(resource_ids: list[str]) -> dict:
+#     """Concatenate multiple datasets row-wise; return {'resource_id', 'n_rows', 'source_ids'}."""
+
+
+
+
+
+
+# @loggable
+# def function_A(test_input:int, *args, **kwargs):
+#     """ Example function A to demonstrate logging. """
+
+#     test_input=1234
+
+#     func_in = log_info({'output_a': 'A'})
+
+#     # saved_args = {**locals()} 
+
+#     # print(f"Function name = '{func_name()}'")
+#     # print(f'saved_args = {saved_args}')
+
+#     print("Function A called")
+
+
+# function_A(test_input=123, extra_param="hello")
 
 
