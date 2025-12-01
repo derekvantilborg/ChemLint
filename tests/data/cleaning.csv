@@ -1,0 +1,46 @@
+smiles,label,description
+CC(=O)[O-].[Na+],1,Simple inorganic salt sodium acetate
+C[N+](C)(C)C.[Cl-],0,Quaternary ammonium salt tetramethylammonium chloride
+CCO.Cl,1,Organic plus inorganic fragment ethanol hydrochloride style
+CCO.CCCCCCCCCO,1,Mixture of small and large organic fragments
+[O-]C(=O)CC[NH3+],1,Zwitterion like molecule with both positive and negative charges
+c1ccc(cc1)[NH3+],1,Protonated anilinium species
+c1ccc(cc1)[O-],1,Phenolate anion deprotonated phenol
+CC(=O)O,0,Neutral acetic acid form
+CC(=O)[O-],1,Deprotonated acetate form
+[O-][N+](=O)c1ccccc1,1,Charged nitro group representation aromatic nitro
+c1ccccc1[N+](=O)[O-],1,Alternative charged nitro representation
+O=[N+](O)c1ccccc1,1,Nitro like group with less explicit charge separation
+C[C@H](F)Cl,1,Single defined chiral center specific configuration
+C[C@@H](F)Cl,0,Single defined chiral center opposite configuration
+CC(F)Cl,1,Same skeleton as above but no chiral tag
+F[C@H](Cl)[C@H](Br)I,1,Two defined chiral centers fully specified
+F[C@H](Cl)C(Br)I,0,One chiral center defined second left unspecified
+C[C@H](O)[C@H](F)Cl,1,Two defined chiral centers in a small molecule
+C[C@H](O)C(F)Cl,1,One chiral center defined one unspecified in similar scaffold
+F/C=C/F,1,E configured difluoroethene double bond stereo
+F/C=C\F,0,Z configured difluoroethene double bond stereo
+F/C=C(/Cl)Br,0,Double bond with explicit stereo and two substituents
+F/C=C(/Cl)\Br,0,Opposite double bond geometry to previous
+Cl/C=C(/Br)F,1,Same connectivity as previous but different atom order
+
+OC1=NC=CC=C1,1,Heteroaromatic tautomer like form
+O=C1NC=CC=C1,1,Alternative tautomer like representation of same ring system
+CC(=O)C(=O)C,0,Simple 1 3 diketone form
+CC(=O)C(O)=C,1,Related enol like form
+[13CH3][CH2][15NH2],1,Isotopically labeled molecule with 13C and 15N
+[2H]O,1,Deuterated water
+[2H]C([2H])([2H])[2H],1,Fully deuterated methane
+C=CC(=C,1,Bad syntax with unclosed parenthesis should fail to parse
+Fe(C5H5)2,0,Non SMILES like ferrocene style input often pasted by users
+CCO,0,Ethanol simple neutral molecule
+c1ccccc1,1,Benzene aromatic ring
+c1ccccc1,1,Benzene aromatic ring
+CC(C)O,0,Isopropanol small secondary alcohol
+CC(=O)N,1,Acetamide neutral amide
+CCOC(=O)C,0,Ethyl acetate simple ester
+CCN(CC)CC,1,Triethylamine neutral tertiary amine
+OC(CO)CO,1,Glycerol simple polyol
+CCOC(=O)OC,1,Dimethyl carbonate neutral carbonate
+CC1CCCCC1,0,Methylcyclohexane simple saturated ring
+CC(=O)NC1=CC=CC=C1,0,Acetanilide simple aromatic amide
