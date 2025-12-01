@@ -286,6 +286,45 @@ def deduplicate_molecules_dataset(resource_id: str, molecule_id_column: str) -> 
     }
 
 
+def drop_duplicate_rows(resource_id: str, subset_columns: list[str] | None = None) -> dict:
+    """
+    Remove duplicate rows from a dataset based on specified subset of columns.
+
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource.
+    subset_columns : list[str] | None
+        List of column names to consider for identifying duplicates.
+        If None, all columns are used to identify duplicates.
+
+    Returns
+    -------
+    dict
+        Updated dataset information after removing duplicate rows.
+    """
+    import pandas as pd
+
+    df = _load_resource(resource_id)
+    n_rows_before = len(df)
+
+    if subset_columns is not None:
+        for col in subset_columns:
+            if col not in df.columns:
+                raise ValueError(f"Column {col} not found in dataset.")
+
+    df_deduplicated = df.drop_duplicates(subset=subset_columns)
+
+    new_resource_id = _store_resource(df_deduplicated, 'csv')
+    return {
+        "resource_id": new_resource_id,
+        "n_rows_before": n_rows_before,
+        "n_rows_after": len(df_deduplicated),
+        "columns": list(df_deduplicated.columns),
+        "preview": df_deduplicated.head(5).to_dict(orient="records"),
+    }
+
+
 def get_all_dataset_tools():
     """Return a list of all dataset manipulation tools."""
     return [
