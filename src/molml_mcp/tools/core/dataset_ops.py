@@ -250,6 +250,42 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str) -> dic
     }
 
 
+def deduplicate_molecules_dataset(resource_id: str, molecule_id_column: str) -> dict:
+    """
+    Remove duplicate entries from a dataset based on a specified molecule identifier column. This should be a unique identifier for each molecule.
+
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource.
+    molecule_id_column : str
+        Name of the column containing unique molecule identifiers.
+
+    Returns
+    -------
+    dict
+        Updated dataset information after removing duplicates.
+    """
+    import pandas as pd
+
+    df = _load_resource(resource_id)
+    n_rows_before = len(df)
+
+    if molecule_id_column not in df.columns:
+        raise ValueError(f"Column {molecule_id_column} not found in dataset.")
+
+    df_deduplicated = df.drop_duplicates(subset=[molecule_id_column])
+
+    new_resource_id = _store_resource(df_deduplicated, 'csv')
+    return {
+        "resource_id": new_resource_id,
+        "n_rows_before": n_rows_before,
+        "n_rows_after": len(df_deduplicated),
+        "columns": list(df_deduplicated.columns),
+        "preview": df_deduplicated.head(5).to_dict(orient="records"),
+    }
+
+
 def get_all_dataset_tools():
     """Return a list of all dataset manipulation tools."""
     return [
@@ -258,4 +294,5 @@ def get_all_dataset_tools():
         inspect_dataset_rows,
         drop_from_dataset,
         keep_from_dataset,
+        deduplicate_molecules_dataset,
     ]
