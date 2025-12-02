@@ -7,6 +7,7 @@ TYPE_REGISTRY: dict[str, dict[str, Any]] = {}
 # csv
 # model
 # json
+# png
 
 
 
@@ -59,4 +60,23 @@ TYPE_REGISTRY["json"] = {
     "ext": ".json",
     "save": _save_json,
     "load": _load_json,
+}
+
+
+# png (images)
+def _save_png(png_bytes: bytes, path: Path):
+    """Save PNG image bytes to file."""
+    assert isinstance(png_bytes, bytes), "png type expects bytes"
+    with open(path, "wb") as f:
+        f.write(png_bytes)
+
+def _load_png(path: Path) -> bytes:
+    """Load PNG image bytes from file."""
+    with open(path, "rb") as f:
+        return f.read()
+
+TYPE_REGISTRY["png"] = {
+    "ext": ".png",
+    "save": _save_png,
+    "load": _load_png,
 }
