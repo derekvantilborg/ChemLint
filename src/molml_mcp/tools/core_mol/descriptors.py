@@ -2,8 +2,7 @@ from rdkit.Chem import Descriptors, MolFromSmiles
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 from molml_mcp.infrastructure.logging import loggable
 
-# List of (name, function) tuples
-# Descriptors._descList
+
 
 DESCRIPTOR_REGISTRY: dict[str, callable] = {
     name: fn for name, fn in Descriptors._descList
