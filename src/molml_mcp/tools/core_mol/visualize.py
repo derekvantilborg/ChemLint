@@ -1,4 +1,5 @@
 from typing import Optional, Tuple
+from pathlib import Path
 
 from rdkit import Chem
 from rdkit.Chem import Draw, rdDepictor
@@ -6,6 +7,10 @@ from rdkit.Chem.Draw import rdMolDraw2D
 
 from molml_mcp.infrastructure.resources import _store_resource, _generate_id
 from molml_mcp.infrastructure.logging import loggable
+
+# FastMCP (comes from mcp[cli])
+from mcp.server.fastmcp import FastMCP, Image
+from molml_mcp.config import DATA_ROOT
 
 # Optional dependency
 try:
@@ -22,9 +27,12 @@ def smiles_to_acs1996_png(
     smiles: str,
     base_size: Tuple[int, int] = (300, 300),
     legend: Optional[str] = '',
-) -> dict:
+) -> list:
     """
-    Render a SMILES as an ACS1996-style PNG and store as a resource.
+    Render a SMILES as an ACS1996-style PNG image and store as a resource.
+
+    Returns a FastMCP Image object (displayed inline in chat) and the file path
+    where the PNG is stored persistently in the resource directory.
 
     If CairoSVG is available:
         1) Draw molecule as SVG in ACS1996 mode on a flexicanvas.
@@ -45,22 +53,18 @@ def smiles_to_acs1996_png(
 
     Returns
     -------
-    dict
-        {
-            "resource_id": str,  # identifier for the stored PNG image
-            "smiles": str,       # input SMILES
-            "width": int,        # image width in pixels
-            "height": int,       # image height in pixels
-            "png_data": bytes,   # PNG image bytes for direct use
-        }
+    list
+        A list containing:
+        - Image: FastMCP Image object for inline display in chat
+        - str: File path where the PNG is stored (e.g., ~/.molml_mcp/20251202T143022_png_A3F2B1D4.png)
     
     Examples
     --------
     # Render aspirin at default 300x300 (1200x1200 with CairoSVG)
-    result = smiles_to_acs1996_png("CC(=O)Oc1ccccc1C(=O)O")
+    image, path = smiles_to_acs1996_png("CC(=O)Oc1ccccc1C(=O)O")
     
     # With custom size and legend
-    result = smiles_to_acs1996_png("CCO", base_size=(400, 400), legend="Ethanol")
+    image, path = smiles_to_acs1996_png("CCO", base_size=(400, 400), legend="Ethanol")
     """
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
@@ -116,26 +120,29 @@ def smiles_to_acs1996_png(
     
     # Store the PNG as a resource
     resource_id = _store_resource(png_bytes, "png")
+    path = str(DATA_ROOT / f"{resource_id}")
+    img = Image(data=png_bytes, format="png")
     
-    return {
-        "resource_id": resource_id,
-        "smiles": smiles,
-        "width": width,
-        "height": height,
-        "png_data": png_bytes,
-    }
+    # return {
+    #     "resource_id": resource_id,
+    #     "smiles": smiles,
+    #     "img": img.to_image_content(),
+    # }
+    return [img, path]
 
 
-@loggable
 @loggable
 def smiles_grid_to_acs1996_png(
     smiles_list: list[str],
     legends: Optional[list[str]] = None,
     mols_per_row: int = 4,
-    sub_img_size: Tuple[int, int] = (300, 300),
-) -> dict:
+    sub_img_size: Tuple[int, int] = (250, 200),
+) -> list:
     """
-    Render a grid of molecules as an ACS1996-style PNG and store as a resource.
+    Render a grid of molecules as an ACS1996-style PNG image and store as a resource.
+
+    Returns a FastMCP Image object (displayed inline in chat) and the file path
+    where the PNG is stored persistently in the resource directory.
 
     If CairoSVG is available:
         1) Draw molecule grid as SVG in ACS1996 mode.
@@ -160,15 +167,10 @@ def smiles_grid_to_acs1996_png(
 
     Returns
     -------
-    dict
-        {
-            "resource_id": str,      # identifier for the stored PNG image
-            "n_molecules": int,      # number of molecules in grid
-            "mols_per_row": int,     # molecules per row
-            "width": int,            # total image width in pixels
-            "height": int,           # total image height in pixels
-            "png_data": bytes,       # PNG image bytes for direct use
-        }
+    list
+        A list containing:
+        - Image: FastMCP Image object for inline display in chat
+        - str: File path where the PNG is stored (e.g., ~/.molml_mcp/20251202T143022_png_A3F2B1D4.png)
 
     Raises
     ------
@@ -179,11 +181,11 @@ def smiles_grid_to_acs1996_png(
     --------
     # Create a 2x2 grid of molecules
     smiles = ["CCO", "c1ccccc1", "CC(=O)O", "CN"]
-    result = smiles_grid_to_acs1996_png(smiles, mols_per_row=2)
+    image, path = smiles_grid_to_acs1996_png(smiles, mols_per_row=2)
     
     # With custom legends and larger sub-images
     legends = ["Ethanol", "Benzene", "Acetic Acid", "Methylamine"]
-    result = smiles_grid_to_acs1996_png(smiles, legends=legends, mols_per_row=2, sub_img_size=(400, 400))
+    image, path = smiles_grid_to_acs1996_png(smiles, legends=legends, mols_per_row=2, sub_img_size=(400, 400))
     """
     if not smiles_list:
         raise ValueError("smiles_list cannot be empty")
@@ -258,15 +260,16 @@ def smiles_grid_to_acs1996_png(
     
     # Store the PNG as a resource
     resource_id = _store_resource(png_bytes, "png")
+    path = str(DATA_ROOT / f"{resource_id}")
+    img = Image(data=png_bytes, format="png")
     
-    return {
-        "resource_id": resource_id,
-        "n_molecules": len(smiles_list),
-        "mols_per_row": mols_per_row,
-        "width": width,
-        "height": height,
-        "png_data": png_bytes,
-    }
+    # return {
+    #     "resource_id": resource_id,
+    #     "n_molecules": len(smiles_list),
+    #     "mols_per_row": mols_per_row,
+    #     "img": img.to_image_content(),
+    # }
+    return [img, path]
 
 
 
