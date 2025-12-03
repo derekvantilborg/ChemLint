@@ -1,5 +1,7 @@
-from rdkit.Chem import MolFromSmiles, MolToSmiles
-from molml_mcp.constants import COMMON_SOLVENTS
+from rdkit.Chem import MolFromSmiles, MolToSmiles, MolFromSmarts
+from rdkit.Chem.AllChem import ReplaceSubstructs
+from rdkit.Chem.rdchem import Mol
+from molml_mcp.constants import COMMON_SOLVENTS, SMARTS_NEUTRALIZATION_PATTERNS
 
 
 def _canonicalize_smiles(smi: str) -> tuple[str, str]: 
@@ -11,7 +13,7 @@ def _canonicalize_smiles(smi: str) -> tuple[str, str]:
         return None, "Failed: Invalid SMILES string"
 
     try:
-        smi_canon = MolToSmiles(mol, canonical=True)
+        smi_canon = MolToSmiles(mol, canonical=True, isomericSmiles=True)
         return smi_canon, "Passed"
     
     except Exception as e:
@@ -142,5 +144,38 @@ def _defragment_smiles(smiles: str, keep_largest_fragment: bool = True) -> tuple
         else:
             return smiles, "Unresolved, contains fragments and keep_largest_fragment is False"
 
+    except Exception as e:
+        return None, f"Failed: {str(e)}"
+    
+
+def _initialise_neutralisation_reactions() -> list[(Mol, Mol)]:
+    """ adapted from the rdkit contribution of Hans de Winter """
+    return [(MolFromSmarts(x), MolFromSmiles(y, False)) for x, y in SMARTS_NEUTRALIZATION_PATTERNS]
+
+
+def _neutralize_smiles(smiles: str, transformations: list[(Mol, Mol)]) -> str:
+    """ Use several neutralisation reactions based on patterns defined in SMARTS_NEUTRALIZATION_PATTERNS to neutralize charged
+    molecules. Transformations should be pre-initialized via _initialise_neutralisation_reactions().
+
+    :param smiles: Canonical SMILES string
+    :return: SMILES of the neutralized molecule
+    """
+    mol = MolFromSmiles(smiles)
+
+    if mol is None:
+        return None, "Failed: Invalid SMILES string"
+
+    try:
+        # applies the transformations
+        for i, (reactant, product) in enumerate(transformations):   
+            while mol.HasSubstructMatch(reactant):
+                rms = ReplaceSubstructs(mol, reactant, product)
+                mol = rms[0]
+
+        # converts back the molecule to smiles
+        smiles = MolToSmiles(mol, canonical=True, isomericSmiles=True)
+
+        return smiles, "Passed"
+    
     except Exception as e:
         return None, f"Failed: {str(e)}"

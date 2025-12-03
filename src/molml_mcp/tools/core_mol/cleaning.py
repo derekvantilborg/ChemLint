@@ -475,22 +475,18 @@ def remove_common_solvents_dataset(
 @loggable
 def defragment_smiles(smiles: list[str], keep_largest_fragment: bool = True) -> tuple[list[str], list[str]]:
     """
-    Remove smaller fragments from a list of SMILES strings by keeping only the largest component.
+    Remove smaller fragments from a list of SMILES strings by keeping only the largest component or unrepeating fragments.
     
-    This function processes fragmented SMILES strings (containing '.') and simplifies them 
-    by retaining only the largest fragment. This is useful for removing counterions, salt 
-    fragments, or unwanted co-crystallized molecules.
+    This function processes fragmented SMILES strings (containing '.') and simplifies them. 
+    This is useful for removing counterions, salt fragments, or unwanted co-crystallized molecules.
     
-    **STRONGLY RECOMMENDED**: Remove common solvents BEFORE running this function using 
-    `remove_common_solvents()` or `remove_common_solvents_dataset()`. This ensures that 
-    you don't accidentally keep a solvent as the "largest fragment" when it happens to be 
-    larger than your molecule of interest.
+    **STRONGLY RECOMMENDED**: Remove common salts and solvents BEFORE running this function using 
+    `remove_common_solvents()` or `remove_common_solvents_dataset()` and `remove_common_salts()` 
+    or `remove_common_salts_dataset()`. This ensures that you don't accidentally keep a solvent as 
+    the "largest fragment" when it happens to be larger than your molecule of interest.
     
     **IMPORTANT LIMITATION**: By default, this function keeps the largest fragment based 
-    on SMILES string length, which is NOT bulletproof. String length does not always 
-    correspond to molecular weight or atom count. For example, a long SMILES string with 
-    many branches might represent a smaller molecule than a compact aromatic system. Use 
-    with caution and verify results, especially for complex molecules.
+    on SMILES string length, which is NOT bulletproof. Use  with caution and verify results.
     
     Parameters
     ----------
@@ -582,16 +578,13 @@ def defragment_smiles_dataset(
     defragmented SMILES and another with comments logged during the defragmentation 
     process.
     
-    **STRONGLY RECOMMENDED**: Remove common solvents BEFORE running this function using 
-    `remove_common_solvents_dataset()`. This ensures that you don't accidentally keep a 
-    solvent as the "largest fragment" when it happens to be larger than your molecule 
-    of interest.
+    **STRONGLY RECOMMENDED**: Remove common salts and solvents BEFORE running this function using 
+    `remove_common_solvents_dataset()` and `remove_common_salts_dataset()`. This ensures that you 
+    don't accidentally keep a solvent as the "largest fragment" when it happens to be larger than 
+    your molecule of interest.
     
     **IMPORTANT LIMITATION**: By default, this function keeps the largest fragment based 
-    on SMILES string length, which is NOT bulletproof. String length does not always 
-    correspond to molecular weight or atom count. For example, a long SMILES string with 
-    many branches might represent a smaller molecule than a compact aromatic system. Use 
-    with caution and verify results, especially for complex molecules.
+    on SMILES string length, which is NOT bulletproof. Use with caution and verify results.
     
     Parameters
     ----------
@@ -690,6 +683,234 @@ def defragment_smiles_dataset(
     }
 
 
+@loggable
+def neutralize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
+    """
+    Neutralize charged molecules by converting them to their neutral forms.
+    
+    This function processes a list of SMILES strings and neutralizes charged functional 
+    groups using a set of predefined chemical transformation patterns. Common neutralizations 
+    include: protonated amines → neutral amines, carboxylate anions → carboxylic acids, 
+    protonated imidazoles → neutral imidazoles, and thiolate anions → thiols.
+    
+    **IMPORTANT**: The output SMILES are both neutralized AND canonicalized. No additional 
+    canonicalization step is needed after running this function, as RDKit's MolToSmiles 
+    with canonical=True is automatically applied to the neutralized structures.
+    
+    Parameters
+    ----------
+    smiles : list[str]
+        List of SMILES strings to neutralize. May contain charged species.
+    
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        A tuple containing:
+        - neutralized_smiles : list[str]
+            Neutralized AND canonicalized SMILES strings. Length matches input list.
+        - comments : list[str]
+            Comments for each SMILES indicating processing status. Length matches input list.
+            - "Passed": Neutralization successful (or no charges found)
+            - "Failed: Invalid SMILES string": Could not parse SMILES
+            - "Failed: <reason>": An error occurred during neutralization
+    
+    Examples
+    --------
+    # Neutralize a protonated amine
+    smiles = ["CC[NH3+]"]
+    neutral, comments = neutralize_smiles(smiles)
+    # Returns: ["CCN"], ["Passed"]
+    
+    # Neutralize a carboxylate
+    smiles = ["CC(=O)[O-]"]
+    neutral, comments = neutralize_smiles(smiles)
+    # Returns: ["CC(=O)O"], ["Passed"]
+    
+    # Multiple charged groups
+    smiles = ["CC[NH3+].[O-]C(=O)C"]
+    neutral, comments = neutralize_smiles(smiles)
+    # Returns: ["CCN.CC(=O)O"], ["Passed"]
+    
+    # Already neutral molecule (no change)
+    smiles = ["c1ccccc1"]
+    neutral, comments = neutralize_smiles(smiles)
+    # Returns: ["c1ccccc1"], ["Passed"]
+    
+    Notes
+    -----
+    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
+    - Output is BOTH neutralized AND canonicalized - no additional canonicalization needed
+    - Neutralization patterns include:
+      * Protonated amines ([N+;!H0]) → neutral amines (N)
+      * Protonated imidazoles ([n+;H]) → neutral imidazoles (n)
+      * Carboxylates/alkoxides ([O-]) → alcohols/acids (O)
+      * Thiolates ([S-]) → thiols (S)
+    - The function applies transformations iteratively until no more matches are found
+    - Molecules without charged groups are returned unchanged (but still canonicalized)
+    - Output lists have the same length and order as input list
+    - Based on neutralization patterns adapted from Hans de Winter's RDKit contributions
+    
+    Warnings
+    --------
+    - Some charged species are intentional (e.g., quaternary ammonium salts, zwitterions)
+      and may lose chemical meaning when neutralized
+    - For zwitterionic amino acids or betaines, neutralization may not preserve the 
+      original chemical structure appropriately
+    - Always verify that neutralization is appropriate for your specific use case
+    
+    See Also
+    --------
+    neutralize_smiles : For processing a list of SMILES strings
+    canonicalize_smiles : For canonicalization without neutralization
+    remove_salts : For removing salt counterions
+    """
+    from molml_mcp.tools.core_mol.smiles_ops import _initialise_neutralisation_reactions, _neutralize_smiles
+    
+    neutralization_transformations = _initialise_neutralisation_reactions()
+
+    neutralized_smiles, comments = [], []   
+    for smi in smiles:
+        new_smi, comment = _neutralize_smiles(smi, neutralization_transformations)
+        neutralized_smiles.append(new_smi)
+        comments.append(comment)
+
+    return neutralized_smiles, comments
+
+
+@loggable
+def neutralize_smiles_dataset(
+    resource_id: str,
+    column_name: str
+) -> dict:
+    """
+    Neutralize charged molecules in a specified column of a tabular dataset.
+    
+    This function processes a tabular dataset by neutralizing charged functional groups 
+    in SMILES strings in the specified column. It adds two new columns to the dataframe: 
+    one containing the neutralized SMILES and another with comments logged during the 
+    neutralization process.
+    
+    **IMPORTANT**: The output SMILES are both neutralized AND canonicalized. No additional 
+    canonicalization step is needed after running this function, as RDKit's MolToSmiles 
+    with canonical=True is automatically applied to all neutralized structures.
+    
+    Common neutralizations include:
+    - Protonated amines → neutral amines
+    - Carboxylate anions → carboxylic acids
+    - Protonated imidazoles → neutral imidazoles
+    - Thiolate anions → thiols
+    
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource to be processed.
+    column_name : str
+        Name of the column containing SMILES strings to be neutralized.
+    
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - resource_id : str
+            Identifier for the new resource with neutralized data.
+        - n_rows : int
+            Total number of rows in the dataset.
+        - columns : list of str
+            List of all column names in the updated dataset.
+        - comments : dict
+            Dictionary with counts of different comment types logged during 
+            neutralization (e.g., number of successful neutralizations, failures).
+        - preview : list of dict
+            Preview of the first 5 rows of the updated dataset.
+        - note : str
+            Explanation of the comment system and canonicalization behavior.
+        - warning : str
+            Important warnings about cases where neutralization may not be appropriate.
+        - suggestions : str
+            Recommendations for additional cleaning steps that may be beneficial.
+        - question_to_user : str
+            Question directed at the user/client regarding next steps.
+    
+    Raises
+    ------
+    ValueError
+        If the specified column_name is not found in the dataset.
+    
+    Notes
+    -----
+    The function adds two new columns to the dataset:
+    - 'smiles_after_neutralization': Contains the neutralized AND canonicalized SMILES strings.
+    - 'comments_after_neutralization': Contains any comments or warnings from the 
+      neutralization process.
+    
+    Neutralization patterns (adapted from Hans de Winter's RDKit contributions):
+    - Protonated amines ([N+;!H0]) → neutral amines (N)
+    - Protonated imidazoles ([n+;H]) → neutral imidazoles (n)
+    - Carboxylates/alkoxides ([O-]) → alcohols/acids (O)
+    - Thiolates ([S-]) → thiols (S)
+    
+    Warnings
+    --------
+    Some charged species are intentional and may lose chemical meaning when neutralized:
+    - Quaternary ammonium salts (e.g., choline, betaine)
+    - Zwitterionic amino acids at physiological pH
+    - Permanently charged drug molecules (e.g., some muscle relaxants)
+    - Ionic liquids where charge is essential to structure
+    
+    Always verify that neutralization is appropriate for your specific use case.
+    
+    Examples
+    --------
+    # Typical usage after salt removal and defragmentation
+    result = neutralize_smiles_dataset(resource_id="20251203T120000_csv_ABC123.csv", 
+                                       column_name="smiles_after_defragmentation")
+    
+    # Or as part of a cleaning pipeline
+    # Step 1: Remove salts
+    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
+    # Step 2: Remove solvents
+    result2 = remove_common_solvents_dataset(resource_id=result1["resource_id"], 
+                                             column_name="smiles_after_salt_removal")
+    # Step 3: Defragment
+    result3 = defragment_smiles_dataset(resource_id=result2["resource_id"], 
+                                        column_name="smiles_after_solvent_removal")
+    # Step 4: Neutralize (already canonicalized, no additional step needed)
+    result4 = neutralize_smiles_dataset(resource_id=result3["resource_id"], 
+                                        column_name="smiles_after_defragmentation")
+    
+    See Also
+    --------
+    neutralize_smiles : For processing a list of SMILES strings
+    canonicalize_smiles_dataset : For canonicalization without neutralization
+    remove_salts_dataset : For dataset-level salt removal
+    defragment_smiles_dataset : For dataset-level defragmentation
+    """
+    df = _load_resource(resource_id)
+    
+    if column_name not in df.columns:
+        raise ValueError(f"Column {column_name} not found in dataset.")
+
+    smiles_list = df[column_name].tolist()
+    neutralized_smiles, comments = neutralize_smiles(smiles_list)
+
+    df['smiles_after_neutralization'] = neutralized_smiles
+    df['comments_after_neutralization'] = comments
+
+    new_resource_id = _store_resource(df, 'csv')
+
+    return {
+        "resource_id": new_resource_id,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "comments": dict(Counter(comments)),
+        "preview": df.head(5).to_dict(orient="records"),
+        "note": "Successful neutralization is marked by 'Passed' in comments. Output SMILES are both neutralized AND canonicalized - no additional canonicalization step is needed.",
+        "warning": "Neutralization may not be appropriate for quaternary ammonium salts, zwitterions, or permanently charged drug molecules. Review your dataset to ensure neutralization is chemically meaningful.",
+        "suggestions": "Consider reviewing molecules that failed neutralization. You may also want to perform tautomer canonicalization or stereochemistry handling as next steps.",
+        "question_to_user": "Would you like to review failed neutralizations or molecules with specific charge states before proceeding?",
+    }
+
+
 def get_all_cleaning_tools():
     """Return a list of all molecular cleaning tools."""
     return [
@@ -701,6 +922,8 @@ def get_all_cleaning_tools():
         remove_common_solvents_dataset,
         defragment_smiles,
         defragment_smiles_dataset,
+        neutralize_smiles,
+        neutralize_smiles_dataset,
     ]
 
 
