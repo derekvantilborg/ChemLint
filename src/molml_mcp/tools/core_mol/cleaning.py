@@ -150,6 +150,107 @@ def remove_salts(smiles: list[str], salt_smarts: str = SMARTS_COMMON_SALTS) -> t
     return new_smiles, comments
 
 
+@loggable
+def remove_salts_dataset(
+    resource_id: str,
+    column_name: str,
+    salt_smarts: str = SMARTS_COMMON_SALTS
+) -> dict:
+    """
+    Remove common salt ions from SMILES strings in a specified column of a tabular dataset.
+    
+    This function processes a tabular dataset by removing salt counterions from SMILES 
+    strings in the specified column. It adds two new columns to the dataframe: one 
+    containing the desalted SMILES and another with comments logged during the salt 
+    removal process (e.g., invalid SMILES, processing failures).
+    
+    **IMPORTANT**: The default salt pattern works well for most use cases and should 
+    typically NOT be changed. Only modify `salt_smarts` if you have specific requirements 
+    (e.g., organometallic compounds where metals are part of the active structure).
+    
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource to be processed.
+    column_name : str
+        Name of the column containing SMILES strings to be desalted.
+    salt_smarts : str, optional
+        SMARTS pattern defining which atoms/ions to remove.
+        **Default: "[Cl,Na,Mg,Ca,K,Br,Zn,Ag,Al,Li,I,O,N,H]"**
+        This default covers common pharmaceutical salts and should be used in most cases.
+        Only change this if you have a specific reason.
+    
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - resource_id : str
+            Identifier for the new resource with desalted data.
+        - n_rows : int
+            Total number of rows in the dataset.
+        - columns : list of str
+            List of all column names in the updated dataset.
+        - comments : dict
+            Dictionary with counts of different comment types logged during 
+            salt removal (e.g., number of successful removals, failures).
+        - preview : list of dict
+            Preview of the first 5 rows of the updated dataset.
+        - note : str
+            Explanation of the comment system.
+        - suggestions : str
+            Recommendations for additional cleaning steps that may be beneficial.
+        - question_to_user : str
+            Question directed at the user/client regarding next steps.
+    
+    Raises
+    ------
+    ValueError
+        If the specified column_name is not found in the dataset.
+    
+    Notes
+    -----
+    The function adds two new columns to the dataset:
+    - 'smiles_after_salt_removal': Contains the desalted SMILES strings.
+    - 'comments_after_salt_removal': Contains any comments or warnings from the 
+      salt removal process.
+    
+    Examples
+    --------
+    # Typical usage with default salt pattern
+    result = remove_salts_dataset(resource_id="20251203T120000_csv_ABC123.csv", 
+                                   column_name="smiles")
+    
+    See Also
+    --------
+    remove_salts : For processing a list of SMILES strings
+    canonicalize_smiles_dataset : For dataset-level canonicalization
+    """
+    df = _load_resource(resource_id)
+    
+    if column_name not in df.columns:
+        raise ValueError(f"Column {column_name} not found in dataset.")
+
+    smiles_list = df[column_name].tolist()
+    desalted_smiles, comments = remove_salts(smiles_list, salt_smarts)
+
+    df['smiles_after_salt_removal'] = desalted_smiles
+    df['comments_after_salt_removal'] = comments
+
+    new_resource_id = _store_resource(df, 'csv')
+
+    return {
+        "resource_id": new_resource_id,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "comments": dict(Counter(comments)),
+        "preview": df.head(5).to_dict(orient="records"),
+        "note": "Successful salt removal is marked by 'Passed' in comments, failure is marked by 'Failed: <reason>'.",
+        "suggestions": "Consider further cleaning steps such as canonicalization, charge neutralization, and stereochemistry handling.",
+        "question_to_user": "Would you like to review failed SMILES entries or drop them from the dataset?",
+    }
+
+
+
 def _remove_pattern(smiles: list[str], smarts_pattern: str) -> tuple[list[str], list[str]]: 
     """ Remove some pattern from a SMILES string using the specified SMARTS.
 
