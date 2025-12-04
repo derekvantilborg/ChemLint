@@ -7,6 +7,370 @@ from molml_mcp.tools.core_mol.smiles_ops import _canonicalize_smiles, _remove_pa
 from molml_mcp.constants import SMARTS_COMMON_SALTS
 
 
+def get_SMILES_standardization_guidelines() -> str:
+    """
+    Return comprehensive guidelines for the default SMILES standardization protocol.
+    
+    This function provides detailed documentation of the recommended 11-step molecular
+    standardization pipeline designed for general-purpose molecular machine learning
+    applications. The protocol prioritizes structural cleanup, functional group 
+    standardization, chemical canonicalization, and final validation.
+    
+    Returns
+    -------
+    str
+        Multi-line string containing:
+        - Complete protocol description with all 11 steps
+        - Rationale for each step and their ordering
+        - Mandatory policy decisions (e.g., stereochemistry flattening)
+        - Optional steps (isotope removal, metal disconnection) with guidance
+        - Critical dependencies and warnings
+        - Use case recommendations
+    
+    Examples
+    --------
+    # Get the standardization guidelines
+    guidelines = get_SMILES_standardization_guidelines()
+    print(guidelines)
+    
+    # Use for documentation or client suggestions
+    protocol_info = get_SMILES_standardization_guidelines()
+    
+    Notes
+    -----
+    This function is intended to provide standardization guidance to MCP clients
+    even if they don't use the automated pipeline functions. It serves as both
+    documentation and a reference for manual implementation of the protocol.
+    
+    The protocol is designed for GENERAL-PURPOSE ML applications. Specific use cases
+    (drug discovery, SAR studies, metallodrug analysis, isotope tracing) may require
+    modifications to the default policy decisions.
+    
+    See Also
+    --------
+    default_SMILES_standardization_pipeline_dataset : Automated implementation of this protocol
+    """
+    
+    guidelines = """
+================================================================================
+DEFAULT SMILES STANDARDIZATION PROTOCOL
+================================================================================
+
+A comprehensive, scientifically-grounded molecular standardization pipeline 
+designed for general-purpose molecular machine learning applications.
+
+This protocol consists of 11 sequential steps, prioritizing structural cleanup
+first, then functional group standardization, followed by chemical 
+canonicalization and final validation.
+
+--------------------------------------------------------------------------------
+PROTOCOL STEPS
+--------------------------------------------------------------------------------
+
+**PHASE 1: INITIAL CANONICALIZATION & STRUCTURAL CLEANUP**
+
+Step 1: Initial Canonicalization
+    Function: canonicalize_smiles_dataset(resource_id, column_name="smiles")
+    Purpose: Establish baseline consistency and enable early detection of 
+             invalid structures
+    Rationale: Start with canonical form to identify parsing issues immediately
+    Output Column: smiles_after_canonicalization
+
+Step 2: Salt Removal
+    Function: remove_salts_dataset(resource_id, column_name, 
+                                    salt_smarts=SMARTS_COMMON_SALTS)
+    Purpose: Remove common pharmaceutical salt counterions (Cl, Na, Mg, Ca, K, 
+             Br, Zn, Ag, Al, Li, I, O, N, H)
+    Rationale: Salts are typically not part of the active molecular structure
+    WARNING: NEVER modify salt_smarts unless working with organometallics where
+             metals are part of the active structure
+    Output Column: smiles_after_salt_removal
+
+Step 3: Solvent Removal
+    Function: remove_common_solvents_dataset(resource_id, column_name)
+    Purpose: Strip 35 common laboratory solvents (water, ethanol, DMF, DMSO, etc.)
+    Rationale: Solvents are co-crystallization artifacts, not target molecules
+    CRITICAL: Must be done BEFORE defragmentation to prevent accidentally 
+              keeping a solvent as the "largest fragment"
+    Output Column: smiles_after_solvent_removal
+
+Step 4: Defragmentation
+    Function: defragment_smiles_dataset(resource_id, column_name, 
+                                         keep_largest_fragment=True)
+    Purpose: Isolate largest molecular component
+    Rationale: After salt/solvent removal, keep the main molecule
+    LIMITATION: Uses SMILES string length heuristic (not bulletproof - doesn't
+                account for implicit hydrogens or molecular weight)
+    DEPENDENCY: MUST run after salt and solvent removal
+    Output Column: smiles_after_defragmentation
+
+**PHASE 2: FUNCTIONAL GROUP STANDARDIZATION**
+
+Step 5: Functional Group Normalization
+    Function: normalize_functional_groups_dataset(resource_id, column_name)
+    Purpose: Standardize nitro groups, N-oxides, azides, diazo compounds, 
+             sulfoxides, and phosphates to preferred representations
+    Rationale: RDKit's Normalizer ensures consistent functional group encoding
+    Output: Normalized AND canonicalized (no additional canonicalization needed)
+    Output Column: smiles_after_normalization
+
+Step 6: Reionization
+    Function: reionize_smiles_dataset(resource_id, column_name)
+    Purpose: Adjust charge distributions to chemically preferred forms for 
+             zwitterions and multi-ionizable compounds
+    Rationale: RDKit's Reionizer applies chemical knowledge to set reasonable
+               charge states
+    MANDATORY: Must be done BEFORE neutralization if you want controlled charges
+    WARNING: May change charge states in ways not matching experimental conditions
+    Output: Reionized AND canonicalized (no additional canonicalization needed)
+    Output Column: smiles_after_reionization
+
+Step 7: Charge Neutralization
+    Function: neutralize_smiles_dataset(resource_id, column_name)
+    Purpose: Convert charged species to neutral forms (protonated amines→amines,
+             carboxylates→acids)
+    Rationale: Most ML models work better with neutral forms; reduces complexity
+    NOTE: Automatically skips quaternary ammonium salts and preserves essential
+          charges where neutralization would be chemically inappropriate
+    WARNING: Not suitable for all molecules (zwitterions, ionic liquids, 
+             permanently charged drugs)
+    Output: Neutralized AND canonicalized (no additional canonicalization needed)
+    Output Column: smiles_after_neutralization
+
+**PHASE 3: OPTIONAL SPECIALIZED CLEANING**
+
+Step 8 (OPTIONAL): Isotope Removal
+    Function: remove_isotopes_dataset(resource_id, column_name)
+    Purpose: Remove isotopic labels ([2H], [13C], [18F], etc.) to standard isotopes
+    Rationale: Isotope labels are typically irrelevant for structure-based ML
+    DEFAULT: Included in standard protocol (most use cases don't need isotopes)
+    WHEN TO SKIP: Radiolabeling studies, NMR experiments, mass spec isotope 
+                  tracing, metabolic flux analysis
+    ARGUMENT: remove_isotopes=True (default) or False
+    WARNING: This operation is IRREVERSIBLE
+    Output: De-isotoped AND canonicalized (no additional canonicalization needed)
+    Output Column: smiles_after_isotope_removal
+
+Step 9 (OPTIONAL): Metal Disconnection
+    Function: disconnect_metals_smiles_dataset(resource_id, column_name, 
+                                                 drop_inorganics=False)
+    Purpose: Break metal-ligand coordinate bonds; optionally filter inorganics
+    Rationale: Separates organic ligands from metal centers for structure-based ML
+    DEFAULT: NOT included in standard protocol (most datasets don't have metals)
+    WHEN TO INCLUDE: Datasets with coordination complexes or organometallics
+    WHEN TO SKIP: Metallodrugs where coordination is essential for activity
+    ARGUMENT: disconnect_metals=False (default) or True
+    NOTE: If enabled, typically followed by re-defragmentation to remove 
+          disconnected metal fragments
+    WARNING: Destroys coordination geometry information
+    Output: Metal-disconnected AND canonicalized
+    Output Column: smiles_after_metal_disconnection
+
+Step 9b (CONDITIONAL): Re-defragmentation After Metal Disconnection
+    Function: defragment_smiles_dataset(resource_id, column_name, 
+                                         keep_largest_fragment=True)
+    Purpose: Remove disconnected metal fragments after coordinate bond breaking
+    Rationale: Keep organic ligand, discard metal center
+    ONLY IF: disconnect_metals=True in Step 9
+    Output Column: smiles_after_re_defragmentation
+
+**PHASE 4: CHEMICAL CANONICALIZATION**
+
+Step 10: Tautomer Canonicalization
+    Function: canonicalize_tautomers_dataset(resource_id, column_name)
+    Purpose: Standardize keto-enol, imine-enamine, and other tautomeric forms
+             to RDKit's canonical tautomer
+    Rationale: Tautomers are chemically equivalent and should have identical
+               representations for deduplication and ML
+    WARNING: Canonical tautomer may not be the predominant form under specific
+             conditions (pH, solvent)
+    Output: Tautomer-canonicalized AND canonicalized
+    Output Column: smiles_after_tautomer_canonicalization
+
+Step 11: Stereochemistry Standardization
+    Function: standardize_stereochemistry_dataset(resource_id, column_name, 
+                                                    stereo_policy="flatten")
+    Purpose: Remove all stereochemical information (chiral centers + E/Z bonds)
+             to treat stereoisomers as identical
+    Rationale: For general ML, stereochemistry often adds noise without improving
+               predictions; reduces dataset size by deduplicating stereoisomers
+    POLICY DECISION: stereo_policy="flatten" (default for general ML)
+    ALTERNATIVE POLICIES:
+        - stereo_policy="keep": Preserve existing stereochemistry for SAR studies
+                                or drug discovery where enantiomers have different
+                                activities
+        - stereo_policy="assign": Enumerate and assign undefined stereocenters
+    ARGUMENT: stereo_policy="flatten" (default), "keep", or "assign"
+    WARNING: Flattening loses information that may be critical for drug activity
+    Output: Standardized AND canonicalized
+    Output Column: smiles_after_stereo_standardization
+
+**PHASE 5: VALIDATION**
+
+Step 12: Final Validation
+    Function: validate_smiles_dataset(resource_id, column_name)
+    Purpose: Verify parseability, sanitization, and compute validation statistics
+    Rationale: Final quality control check; flag problematic entries for review
+    NOTE: Returns ORIGINAL SMILES unchanged (validation only, not modification)
+    Output: Validation statistics (n_valid, n_invalid, validation_rate)
+    Output Columns: validation_status, validation_comments
+
+--------------------------------------------------------------------------------
+CRITICAL DEPENDENCIES
+--------------------------------------------------------------------------------
+
+1. Solvents BEFORE Defragmentation (Steps 3→4)
+   Failure to follow: May keep solvent as "largest fragment" instead of molecule
+   
+2. Normalization BEFORE Reionization (Steps 5→6)
+   Failure to follow: Reionizer may not work correctly on non-normalized structures
+   
+3. Reionization BEFORE Neutralization (Steps 6→7)
+   Failure to follow: Lose control over charge distribution
+   
+4. Metal Disconnection BEFORE Re-defragmentation (Steps 9→9b)
+   Failure to follow: Disconnected metal fragments remain in SMILES
+
+--------------------------------------------------------------------------------
+POLICY DECISIONS & ARGUMENTS
+--------------------------------------------------------------------------------
+
+The standard protocol makes the following policy decisions for general-purpose ML:
+
+1. **Stereochemistry**: FLATTEN (treat stereoisomers as identical)
+   Argument: stereo_policy="flatten"
+   Alternatives: "keep" (SAR studies), "assign" (fill undefined stereocenters)
+   
+2. **Isotope Removal**: ENABLED (remove isotope labels)
+   Argument: remove_isotopes=True
+   Alternative: False (keep isotopes for specialized studies)
+   
+3. **Metal Disconnection**: DISABLED (keep metal complexes intact)
+   Argument: disconnect_metals=False
+   Alternative: True (break metal-ligand bonds)
+
+4. **Salt Pattern**: DEFAULT (pharmaceutical salts)
+   Argument: salt_smarts=SMARTS_COMMON_SALTS
+   Alternative: Custom SMARTS (only for specialized datasets)
+
+5. **Defragmentation**: ENABLED (keep largest fragment)
+   Argument: keep_largest_fragment=True
+   Alternative: False (keep all fragments)
+
+--------------------------------------------------------------------------------
+USE CASE RECOMMENDATIONS
+--------------------------------------------------------------------------------
+
+**GENERAL ML / QSAR / ADMET Prediction:**
+Use default protocol as-is:
+- stereo_policy="flatten"
+- remove_isotopes=True
+- disconnect_metals=False
+
+**Drug Discovery / SAR Studies:**
+Modify stereochemistry policy:
+- stereo_policy="keep"  (enantiomers may have different activities)
+- remove_isotopes=True
+- disconnect_metals=False
+
+**Organometallic Chemistry:**
+Disable metal disconnection and modify salt removal:
+- stereo_policy="keep"
+- remove_isotopes=True
+- disconnect_metals=False
+- salt_smarts=<custom pattern excluding essential metals>
+
+**Coordination Chemistry:**
+Enable metal disconnection:
+- stereo_policy="flatten"
+- remove_isotopes=True
+- disconnect_metals=True  (separate ligands from metal centers)
+
+**Radiolabeling / Isotope Tracing:**
+Disable isotope removal:
+- stereo_policy="flatten"
+- remove_isotopes=False  (isotopes are essential data)
+- disconnect_metals=False
+
+**Metallodrug Analysis:**
+Keep metal complexes intact:
+- stereo_policy="keep"
+- remove_isotopes=True
+- disconnect_metals=False  (coordination is essential)
+
+--------------------------------------------------------------------------------
+LIMITATIONS & WARNINGS
+--------------------------------------------------------------------------------
+
+1. **Defragmentation Heuristic**: Uses SMILES string length (NOT bulletproof)
+   - Doesn't account for implicit hydrogens
+   - Doesn't correlate with molecular weight
+   - May fail for similar-sized fragments
+   - MITIGATION: Always remove salts/solvents first
+
+2. **Neutralization Edge Cases**: May not be appropriate for:
+   - Quaternary ammonium salts (e.g., choline)
+   - Zwitterions (e.g., amino acids)
+   - Permanently charged drugs (e.g., muscle relaxants)
+   - Ionic liquids
+   - MITIGATION: Function automatically preserves essential charges
+
+3. **Stereochemistry Flattening**: Loses chirality information
+   - Enantiomers become identical
+   - May affect SAR predictions
+   - MITIGATION: Use stereo_policy="keep" for drug discovery
+
+4. **Tautomer Selection**: Canonical tautomer may not be predominant form
+   - RDKit's choice may not match biological conditions
+   - pH/solvent effects ignored
+   - MITIGATION: Accept as standardization convention
+
+5. **Isotope Removal**: Irreversible operation
+   - Cannot recover isotope labels
+   - May affect specialized studies
+   - MITIGATION: Use remove_isotopes=False when needed
+
+6. **Metal Disconnection**: Destroys coordination information
+   - Loses geometry
+   - Inappropriate for metallodrugs
+   - MITIGATION: Use disconnect_metals=False (default)
+
+--------------------------------------------------------------------------------
+IMPLEMENTATION NOTES
+--------------------------------------------------------------------------------
+
+- Most functions automatically canonicalize output (no redundant canonicalization)
+- Each step adds new columns with descriptive names
+- Comments columns track processing status for each molecule
+- Failed operations preserve original values with failure reasons
+- Resource IDs are chained: output of step N becomes input of step N+1
+- All steps use @loggable decorator for automatic operation history logging
+- Preview shows first 5 rows after each step for visual inspection
+
+--------------------------------------------------------------------------------
+EXPECTED OUTCOMES
+--------------------------------------------------------------------------------
+
+After running the full protocol:
+- Structurally equivalent molecules have identical SMILES
+- Salts, solvents, and fragments removed
+- Functional groups standardized
+- Charges normalized (neutral or chemically reasonable)
+- Isotopes removed (if enabled)
+- Metals disconnected (if enabled)
+- Tautomers deduplicated
+- Stereoisomers deduplicated (if flattened)
+- Invalid molecules flagged for review
+
+For deduplication, use the final SMILES column to identify duplicates.
+
+================================================================================
+END OF PROTOCOL
+================================================================================
+"""
+    return guidelines
+
+
 
 @loggable
 def canonicalize_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
@@ -2544,18 +2908,19 @@ def validate_smiles_dataset(
 
 
 
-def get_molecule_standardization_recommendations():
-    """Return recommendations for molecular standardization steps."""
-    return (
-        "Recommended molecular standardization steps include:\n"
-        "1. Remove common salts using `remove_salts()` or `remove_salts_dataset()`.\n"
-        "2. Remove common solvents using `remove_common_solvents()` or `remove_common_solvents_dataset()`.\n"
-        "3. Defragment molecules to keep the largest fragment using `defragment_smiles()` or `defragment_smiles_dataset()`.\n"
-        "4. Neutralize charged species using `neutralize_smiles()` or `neutralize_smiles_dataset()`.\n"
-        "5. Canonicalize SMILES strings using `canonicalize_smiles()` or `canonicalize_smiles_dataset()`.\n"
-        "6. Optionally, flatten stereochemistry if not relevant using `flatten_stereochemistry()` or `flatten_stereochemistry_dataset()`.\n"
-        "These steps help ensure consistency and reliability in molecular representations for downstream analyses."
-    )
+def get_SMILES_standardization_guidelines():
+    """Return guidelines with recommended SMILES cleaning tools in typical order."""
+    pass
+
+
+def default_SMILES_standardization_pipeline():
+    pass
+
+
+def default_SMILES_standardization_pipeline_dataset():
+    pass
+
+
 
 
 def get_all_cleaning_tools():
@@ -2589,8 +2954,3 @@ def get_all_cleaning_tools():
 
 
 
-
-
-# Functional-group normalization + reionization
-# Metal / inorganic handling
-# Final validation step
