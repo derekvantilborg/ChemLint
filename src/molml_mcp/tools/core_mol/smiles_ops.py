@@ -14,8 +14,10 @@ from rdkit.Chem.EnumerateStereoisomers import (
     EnumerateStereoisomers,
     StereoEnumerationOptions,
 )
-from rdkit.Chem import FindMolChiralCenters
+from rdkit.Chem import FindMolChiralCenters, rdMolStandardize
 
+# create one global enumerator so I don't reallocate it on every call
+_TAUT_ENUM = rdMolStandardize.TautomerEnumerator()
 
 
 
@@ -369,7 +371,7 @@ def _deduplicate_isomers(isomer_mols: List[Chem.Mol]) -> List[Chem.Mol]:
     return unique
 
 
-def standardize_stereo_smiles(
+def _standardize_stereo_smiles(
     smiles: str,
     stereo_policy: str = "keep",          # "keep" | "assign" | "flatten"
     assign_policy: str = "first",         # "first" | "random" | "lowest"
@@ -447,5 +449,37 @@ def standardize_stereo_smiles(
 
         return MolToSmiles(selected, canonical=True, isomericSmiles=True), "Passed"
     
+    except Exception as e:
+        return None, f"Failed: {str(e)}"
+    
+
+def _canonicalize_tautomer_smiles(smiles: str) -> tuple[str, str]:
+    """
+    Standardize a SMILES string to RDKit's canonical tautomer.
+
+    Returns a single canonical SMILES for all tautomers of the same scaffold.
+    This ensures that different tautomeric forms of the same molecule are 
+    represented by the same SMILES string.
+
+    Args:
+        smiles: Input SMILES string.
+
+    Returns:
+        Tuple of (SMILES string, comment). Returns (None, error message) if 
+        the input is invalid.
+
+    Examples:
+        >>> canonicalize_tautomer_smiles("O=C1NC=CC=C1")
+        ('O=C1NC=CC=C1', 'Passed')
+        >>> canonicalize_tautomer_smiles("OC1=NC=CC=C1")
+        ('O=C1NC=CC=C1', 'Passed')   # same output as above
+    """
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None, "Failed: Invalid SMILES string"
+
+    try:
+        can_mol = _TAUT_ENUM.Canonicalize(mol)
+        return Chem.MolToSmiles(can_mol, canonical=True, isomericSmiles=True), "Passed"
     except Exception as e:
         return None, f"Failed: {str(e)}"
