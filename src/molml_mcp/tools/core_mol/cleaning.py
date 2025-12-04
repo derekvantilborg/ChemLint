@@ -3291,7 +3291,7 @@ def default_SMILES_standardization_pipeline_dataset(
     # Step 5: Functional group normalization
     result = normalize_functional_groups_dataset(current_resource_id, current_column)
     current_resource_id = result["resource_id"]
-    current_column = "smiles_after_normalization"
+    current_column = "smiles_after_functional_group_normalization"
     
     # Step 6: Reionization
     result = reionize_smiles_dataset(current_resource_id, current_column)
