@@ -242,7 +242,7 @@ def _remove_isotopes(smiles: str) -> tuple[str, str]:
 
 
 def enumerate_stereo_isomers_smiles(smiles: str, max_isomers: int = 32, try_embedding: bool = False, only_unassigned: bool = True, 
-                                    only_unique: bool = True, random_seed: int = 42) -> List[str]:
+                                    random_seed: int = 42) -> List[str]:
     """
     Enumerate stereoisomers for a SMILES string.
 
@@ -371,7 +371,7 @@ def _deduplicate_isomers(isomer_mols: List[Chem.Mol]) -> List[Chem.Mol]:
 
 def standardize_stereo_smiles(
     smiles: str,
-    stereo_policy: str = "keep",          # "keep" | "assign"
+    stereo_policy: str = "keep",          # "keep" | "assign" | "flatten"
     assign_policy: str = "first",         # "first" | "random" | "lowest"
     max_isomers: int = 32,
     try_embedding: bool = False,
@@ -387,6 +387,7 @@ def standardize_stereo_smiles(
         stereo_policy:
             - "keep":    return canonical isomeric SMILES (no stereo changes)
             - "assign":  enumerate stereoisomers and pick one (see `assign_policy`)
+            - "flatten": remove all stereochemistry (chiral centers + E/Z bonds)
         assign_policy: How to pick a single isomer when stereo_policy == "assign":
             - "first":   first enumerated
             - "random":  random choice
@@ -402,6 +403,10 @@ def standardize_stereo_smiles(
         return None, "Failed: Invalid SMILES string"
 
     try:
+        # Handle flatten policy
+        if stereo_policy == "flatten":
+            return _flatten_stereochemistry(smiles)
+        
         # Detect chiral centers (including unassigned)
         has_chirality = _has_chiral_centers(mol)
         
@@ -410,9 +415,7 @@ def standardize_stereo_smiles(
             return MolToSmiles(mol, canonical=True, isomericSmiles=True), "Passed"
 
         if stereo_policy != "assign":
-            # For now we only support "keep" and "assign" here;
-            # flattening/"remove" you said you already handle elsewhere.
-            return MolToSmiles(mol, canonical=True, isomericSmiles=True), "Passed"
+            return None, f"Failed: Unsupported stereo_policy '{stereo_policy}'. Use 'keep', 'assign', or 'flatten'."
 
         # --- Assign policy: enumerate isomers, then choose one ---
         isomer_smiles = enumerate_stereo_isomers_smiles(
@@ -420,7 +423,6 @@ def standardize_stereo_smiles(
             max_isomers=max_isomers,
             try_embedding=try_embedding,
             only_unassigned=only_unassigned,
-            only_unique=only_unique,
             random_seed=random_seed,
         )
 
