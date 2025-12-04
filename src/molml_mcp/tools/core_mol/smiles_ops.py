@@ -52,7 +52,7 @@ def _remove_pattern(smi: str, smarts_pattern: str) -> tuple[str, str]:
 
     # Handle None input (failed previous step)
     if smi is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
 
     # Create SaltRemover with the provided SMARTS pattern
     # defnData format: "SMARTS<tab>name" per line
@@ -117,7 +117,7 @@ def _strip_common_solvent_fragments(smi: str) -> tuple[str, str]:
 
     # Handle None input (failed previous step)
     if smi is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
 
     # Only act on fragmented SMILES
     if '.' not in smi:
@@ -156,7 +156,7 @@ def _defragment_smiles(smiles: str, keep_largest_fragment: bool = True) -> tuple
 
     # Handle None input (failed previous step)
     if smiles is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
 
     # If no fragments, nothing to do
     if '.' not in smiles:
@@ -194,7 +194,7 @@ def _neutralize_smiles(smiles: str, transformations: list[(Mol, Mol)]) -> tuple[
     """
     # Handle None input (failed previous step)
     if smiles is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
     
     mol = MolFromSmiles(smiles)
 
@@ -224,7 +224,7 @@ def _flatten_stereochemistry(smiles: str) -> tuple[str, str]:
     """
     # Handle None input (failed previous step)
     if smiles is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
     
     mol = MolFromSmiles(smiles)
 
@@ -252,7 +252,7 @@ def _remove_isotopes(smiles: str) -> tuple[str, str]:
     """
     # Handle None input (failed previous step)
     if smiles is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
     
     mol = MolFromSmiles(smiles)
 
@@ -429,7 +429,7 @@ def _standardize_stereo_smiles(
     """
     # Handle None input (failed previous step)
     if smiles is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
     
     mol = MolFromSmiles(smiles)
     if mol is None:
@@ -510,7 +510,7 @@ def _canonicalize_tautomer_smiles(smiles: str) -> tuple[str, str]:
     """
     # Handle None input (failed previous step)
     if smiles is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
     
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
@@ -544,7 +544,7 @@ def _normalize_smiles(smi: str) -> tuple[str | None, str]:
     """
     # Handle None input (failed previous step)
     if smi is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
     
     mol = MolFromSmiles(smi)
     if mol is None:
@@ -572,7 +572,7 @@ def _reionize_smiles(smi: str) -> tuple[str | None, str]:
     """
     # Handle None input (failed previous step)
     if smi is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
     
     mol = MolFromSmiles(smi)
     if mol is None:
@@ -598,7 +598,7 @@ def _disconnect_metals_smiles(
     """
     # Handle None input (failed previous step)
     if smi is None:
-        return None, "Skipped: Previous step failed"
+        return None, "Skipped: Invalid SMILES string"
     
     mol = MolFromSmiles(smi)
     if mol is None:
