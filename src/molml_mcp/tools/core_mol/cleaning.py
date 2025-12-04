@@ -2,7 +2,7 @@ from collections import Counter
 from rdkit.Chem import MolFromSmiles, MolToSmiles
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 from molml_mcp.infrastructure.logging import loggable
-from molml_mcp.tools.core_mol.smiles_ops import _canonicalize_smiles, _remove_pattern, _strip_common_solvent_fragments, _defragment_smiles, _normalize_smiles, _reionize_smiles
+from molml_mcp.tools.core_mol.smiles_ops import _canonicalize_smiles, _remove_pattern, _strip_common_solvent_fragments, _defragment_smiles, _normalize_smiles, _reionize_smiles, _disconnect_metals_smiles, _validate_smiles
 
 from molml_mcp.constants import SMARTS_COMMON_SALTS
 
@@ -2071,6 +2071,477 @@ def reionize_smiles_dataset(
     }
 
 
+@loggable
+def disconnect_metals_smiles(smiles: list[str], drop_inorganics: bool = False) -> tuple[list[str], list[str]]:
+    """
+    Disconnect metal-ligand coordinate bonds in a list of SMILES strings.
+    
+    This function processes a list of SMILES strings and disconnects coordinate bonds 
+    between metal atoms and ligands using RDKit's MetalDisconnector. This is useful for 
+    standardizing organometallic compounds, metal complexes, and coordination compounds 
+    by breaking dative/coordinate bonds while preserving the organic ligand structures.
+    
+    **IMPORTANT**: The output SMILES have disconnected metals AND are canonicalized. 
+    No additional canonicalization step is needed after running this function.
+    
+    Common applications include:
+    - Metal complexes: Separating metal centers from organic ligands
+    - Organometallic compounds: Isolating the organic portion
+    - Coordination compounds: Breaking coordinate bonds to metals
+    - Drug discovery: Focusing on organic ligands without metal coordination
+    
+    Parameters
+    ----------
+    smiles : list[str]
+        List of SMILES strings to process. May contain metal-ligand bonds.
+    drop_inorganics : bool, optional
+        If True, molecules without carbon atoms (purely inorganic) are filtered out 
+        and returned as None with a failure comment. Default is False.
+    
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        A tuple containing:
+        - disconnected_smiles : list[str]
+            SMILES strings with metal-ligand bonds disconnected, canonicalized. 
+            Length matches input list. Dropped inorganics return None.
+        - comments : list[str]
+            Comments for each SMILES indicating processing status. Length matches input list.
+            - "Passed": Metal disconnection successful (or no metals present)
+            - "Failed: Invalid SMILES string": Input could not be parsed
+            - "Failed: Inorganic molecule (no carbon atoms)": Removed due to drop_inorganics=True
+            - "Failed: Metal disconnection error: <details>": An error occurred during processing
+    
+    Examples
+    --------
+    # Disconnect a simple metal complex
+    smiles = ["[Fe](Cl)(Cl)(Cl)(Cl)(Cl)Cl"]
+    disconnected, comments = disconnect_metals_smiles(smiles)
+    # Returns with metal-ligand bonds broken
+    
+    # Organometallic with organic ligand
+    smiles = ["c1ccccc1[Fe]"]
+    disconnected, comments = disconnect_metals_smiles(smiles)
+    # Returns benzene separated from iron
+    
+    # Drop purely inorganic molecules
+    smiles = ["[Fe]Cl6", "c1ccccc1", "[Na]Cl"]
+    disconnected, comments = disconnect_metals_smiles(smiles, drop_inorganics=True)
+    # Returns: [None, "c1ccccc1", None] with appropriate failure comments for inorganics
+    
+    # Already metal-free molecule (no change)
+    smiles = ["c1ccccc1", "CCO"]
+    disconnected, comments = disconnect_metals_smiles(smiles)
+    # Returns: ["c1ccccc1", "CCO"], ["Passed", "Passed"]
+    
+    Notes
+    -----
+    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
+    - Output is BOTH metal-disconnected AND canonicalized - no additional steps needed
+    - Breaks dative/coordinate bonds between metals and ligands
+    - Does NOT remove metal atoms themselves (unless drop_inorganics=True for inorganics)
+    - Typical workflow position: After defragmentation, before or after functional group normalization
+    - Particularly useful for:
+      * Organometallic chemistry datasets
+      * Drug discovery focusing on organic scaffolds
+      * Removing metal artifacts from screening libraries
+      * Standardizing metal-containing compounds
+    - Output lists have the same length and order as input list
+    
+    Warnings
+    --------
+    - Metal coordination may be essential for biological activity in some cases:
+      * Metallodrugs where metal is part of the active compound
+      * Enzyme inhibitors that coordinate to metal centers
+      * Porphyrins and other metal-cofactor systems
+    - Disconnection removes structural information about metal coordination geometry
+    - When drop_inorganics=True, purely inorganic salts and minerals are lost
+    
+    See Also
+    --------
+    disconnect_metals_smiles_dataset : Dataset version of this function
+    defragment_smiles : For removing disconnected fragments after metal disconnection
+    remove_salts : For removing salt counterions
+    """
+    results = [_disconnect_metals_smiles(smi, drop_inorganics=drop_inorganics) for smi in smiles]
+    disconnected_smiles = [smi for smi, _ in results]
+    comments = [cmt for _, cmt in results]
+    return disconnected_smiles, comments
+
+
+@loggable
+def disconnect_metals_smiles_dataset(
+    resource_id: str,
+    column_name: str,
+    drop_inorganics: bool = False
+) -> dict:
+    """
+    Disconnect metal-ligand coordinate bonds in a specified column of a tabular dataset.
+    
+    This function processes a tabular dataset by disconnecting coordinate bonds between 
+    metal atoms and ligands in SMILES strings. It adds two new columns to the dataframe: 
+    one containing the metal-disconnected SMILES and another with comments logged during 
+    the disconnection process.
+    
+    **IMPORTANT**: The output SMILES have disconnected metals AND are canonicalized. 
+    No additional canonicalization step is needed after running this function.
+    
+    This is useful for:
+    - Standardizing organometallic and coordination compound datasets
+    - Isolating organic ligands from metal complexes
+    - Removing metal coordination artifacts from screening libraries
+    - Focusing analysis on organic scaffolds without metal centers
+    
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource to be processed.
+    column_name : str
+        Name of the column containing SMILES strings to process.
+    drop_inorganics : bool, optional
+        If True, molecules without carbon atoms (purely inorganic) are filtered out 
+        and returned as None. Default is False.
+    
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - resource_id : str
+            Identifier for the new resource with metal-disconnected data.
+        - n_rows : int
+            Total number of rows in the dataset.
+        - columns : list of str
+            List of all column names in the updated dataset.
+        - comments : dict
+            Dictionary with counts of different comment types logged during 
+            metal disconnection (e.g., number of successful operations, failures, dropped inorganics).
+        - preview : list of dict
+            Preview of the first 5 rows of the updated dataset.
+        - note : str
+            Explanation of the operation.
+        - warning : str
+            Important warnings about metal disconnection.
+        - suggestions : str
+            Recommendations for next steps.
+    
+    Raises
+    ------
+    ValueError
+        If the specified column_name is not found in the dataset.
+    
+    Notes
+    -----
+    The function adds two new columns to the dataset:
+    - 'smiles_after_metal_disconnection': Contains the SMILES with disconnected metal bonds.
+    - 'comments_after_metal_disconnection': Contains any comments or warnings from the 
+      disconnection process.
+    
+    Typical workflow position:
+    1. Remove salts
+    2. Remove solvents
+    3. Defragment (or after metal disconnection)
+    4. **Disconnect metals** ← This step
+    5. Defragment again (to remove disconnected metal fragments if desired)
+    6. Normalize functional groups
+    7. Reionize/neutralize
+    8. Canonicalize tautomers
+    
+    Warnings
+    --------
+    - Metal coordination may be essential for activity in metallodrugs
+    - Disconnection loses information about coordination geometry
+    - Purely inorganic molecules are dropped when drop_inorganics=True
+    - Consider whether metal-free ligands are appropriate for your analysis
+    
+    Examples
+    --------
+    # Typical usage after defragmentation
+    result = disconnect_metals_smiles_dataset(
+        resource_id="20251204T120000_csv_ABC123.csv", 
+        column_name="smiles_after_defragmentation"
+    )
+    
+    # Drop purely inorganic molecules
+    result = disconnect_metals_smiles_dataset(
+        resource_id="20251204T120000_csv_ABC123.csv", 
+        column_name="smiles_after_defragmentation",
+        drop_inorganics=True
+    )
+    
+    # As part of a cleaning pipeline
+    # Step 1: Remove salts
+    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
+    # Step 2: Defragment
+    result2 = defragment_smiles_dataset(resource_id=result1["resource_id"], 
+                                        column_name="smiles_after_salt_removal")
+    # Step 3: Disconnect metals
+    result3 = disconnect_metals_smiles_dataset(resource_id=result2["resource_id"], 
+                                               column_name="smiles_after_defragmentation",
+                                               drop_inorganics=False)
+    # Step 4: Defragment again to remove disconnected metal fragments
+    result4 = defragment_smiles_dataset(resource_id=result3["resource_id"], 
+                                        column_name="smiles_after_metal_disconnection")
+    # Step 5: Normalize functional groups
+    result5 = normalize_functional_groups_dataset(resource_id=result4["resource_id"], 
+                                                   column_name="smiles_after_defragmentation")
+    
+    See Also
+    --------
+    disconnect_metals_smiles : For processing a list of SMILES strings
+    defragment_smiles_dataset : Should be run AFTER metal disconnection to remove fragments
+    remove_salts_dataset : For removing salt counterions
+    normalize_functional_groups_dataset : For functional group standardization
+    """
+    df = _load_resource(resource_id)
+    
+    if column_name not in df.columns:
+        raise ValueError(f"Column {column_name} not found in dataset.")
+
+    smiles_list = df[column_name].tolist()
+    disconnected_smiles, comments = disconnect_metals_smiles(smiles_list, drop_inorganics=drop_inorganics)
+
+    df['smiles_after_metal_disconnection'] = disconnected_smiles
+    df['comments_after_metal_disconnection'] = comments
+
+    new_resource_id = _store_resource(df, 'csv')
+
+    inorganic_note = " Purely inorganic molecules (no carbon) have been dropped." if drop_inorganics else ""
+
+    return {
+        "resource_id": new_resource_id,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "comments": dict(Counter(comments)),
+        "preview": df.head(5).to_dict(orient="records"),
+        "note": f"Successful metal disconnection is marked by 'Passed' in comments. Coordinate bonds between metals and ligands have been broken. The output SMILES are canonical and isomeric.{inorganic_note}",
+        "warning": "Metal coordination may be essential for biological activity in metallodrugs and metal-dependent enzyme inhibitors. Metal disconnection removes structural information about coordination geometry. Consider whether this is appropriate for your analysis.",
+        "suggestions": "Review molecules that failed metal disconnection. Consider running defragment_smiles_dataset again to remove disconnected metal fragments. Proceed with functional group normalization and other cleaning steps.",
+    }
+
+
+@loggable
+def validate_smiles(smiles: list[str]) -> tuple[list[str], list[str]]:
+    """
+    Validate a list of SMILES strings for correctness and chemical sanity.
+    
+    This function performs lightweight validation to check whether SMILES strings can be 
+    parsed by RDKit, pass sanitization checks, and represent valid molecular structures. 
+    This is useful as a final quality control step after cleaning, or to filter out 
+    problematic molecules before processing.
+    
+    Validation checks include:
+    - Parseable by RDKit (MolFromSmiles succeeds)
+    - Passes RDKit's sanitization (valence, aromaticity, etc.)
+    - Contains at least one atom (not empty)
+    - No parsing exceptions
+    
+    **Note**: This function returns the ORIGINAL SMILES strings unchanged (not canonicalized).
+    Use this for validation purposes, not for standardization.
+    
+    Parameters
+    ----------
+    smiles : list[str]
+        List of SMILES strings to validate.
+    
+    Returns
+    -------
+    tuple[list[str], list[str]]
+        A tuple containing:
+        - validated_smiles : list[str]
+            Original SMILES strings if valid, None if invalid. Length matches input list.
+        - comments : list[str]
+            Comments for each SMILES indicating validation status. Length matches input list.
+            - "Passed": SMILES is valid
+            - "Failed: Invalid SMILES string": Could not parse SMILES
+            - "Failed: Empty molecule (0 atoms)": Molecule has no atoms
+            - "Failed: Exception during parsing: <details>": An error occurred during parsing
+    
+    Examples
+    --------
+    # Validate valid SMILES
+    smiles = ["CCO", "c1ccccc1", "CC(=O)O"]
+    validated, comments = validate_smiles(smiles)
+    # Returns: ["CCO", "c1ccccc1", "CC(=O)O"], ["Passed", "Passed", "Passed"]
+    
+    # Detect invalid SMILES
+    smiles = ["CCO", "invalid_smiles", "c1ccccc"]
+    validated, comments = validate_smiles(smiles)
+    # Returns: ["CCO", None, None] with failure comments for invalid entries
+    
+    # Detect empty molecules
+    smiles = ["", "CCO"]
+    validated, comments = validate_smiles(smiles)
+    # Returns with appropriate failure for empty string
+    
+    Notes
+    -----
+    - This function operates on a LIST of SMILES strings, not a dataset/dataframe
+    - Returns ORIGINAL SMILES unchanged - does NOT canonicalize
+    - Useful for quality control and filtering
+    - Best applied:
+      * As a final validation step after cleaning pipeline
+      * Before expensive computations or database insertions
+      * To identify problematic molecules for manual review
+    - Validation is lightweight (just parsing + sanitization)
+    - Does NOT check for chemical reasonableness beyond RDKit's sanitization
+    - Output lists have the same length and order as input list
+    
+    Warnings
+    --------
+    - This function only validates RDKit parseability, not chemical realism
+    - Some chemically unreasonable structures may still pass validation
+    - Does not check for specific structural features or drug-likeness
+    - Passing validation does not guarantee the molecule is scientifically meaningful
+    
+    See Also
+    --------
+    validate_smiles_dataset : Dataset version of this function
+    canonicalize_smiles : For standardization (which includes implicit validation)
+    """
+    results = [_validate_smiles(smi) for smi in smiles]
+    validated_smiles = [smi for smi, _ in results]
+    comments = [cmt for _, cmt in results]
+    return validated_smiles, comments
+
+
+@loggable
+def validate_smiles_dataset(
+    resource_id: str,
+    column_name: str
+) -> dict:
+    """
+    Validate SMILES strings in a specified column of a tabular dataset.
+    
+    This function performs lightweight validation on a tabular dataset to check whether 
+    SMILES strings are parseable, pass sanitization, and represent valid molecular 
+    structures. It adds two new columns to the dataframe: one containing the validated 
+    SMILES (original, not canonicalized) and another with validation status comments.
+    
+    **Note**: This function returns ORIGINAL SMILES unchanged, making it suitable for 
+    final quality control without altering the data.
+    
+    Validation checks:
+    - Parseable by RDKit
+    - Passes sanitization (valence, aromaticity)
+    - Contains at least one atom
+    - No parsing exceptions
+    
+    Parameters
+    ----------
+    resource_id : str
+        Identifier for the tabular dataset resource to be processed.
+    column_name : str
+        Name of the column containing SMILES strings to validate.
+    
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - resource_id : str
+            Identifier for the new resource with validation results.
+        - n_rows : int
+            Total number of rows in the dataset.
+        - columns : list of str
+            List of all column names in the updated dataset.
+        - comments : dict
+            Dictionary with counts of different validation statuses 
+            (e.g., number of passed, failed validations).
+        - preview : list of dict
+            Preview of the first 5 rows of the updated dataset.
+        - note : str
+            Explanation of the validation results.
+        - n_valid : int
+            Number of molecules that passed validation.
+        - n_invalid : int
+            Number of molecules that failed validation.
+        - validation_rate : float
+            Percentage of molecules that passed validation.
+        - suggestions : str
+            Recommendations for handling invalid molecules.
+    
+    Raises
+    ------
+    ValueError
+        If the specified column_name is not found in the dataset.
+    
+    Notes
+    -----
+    The function adds two new columns to the dataset:
+    - 'validated_smiles': Contains the original SMILES if valid, None if invalid.
+    - 'validation_status': Contains validation status for each molecule.
+    
+    Typical workflow position:
+    - **As a final step** after all cleaning operations
+    - Before expensive downstream processing
+    - To identify problematic molecules for removal or manual review
+    
+    Use cases:
+    - Quality control after data cleaning
+    - Filtering datasets before machine learning
+    - Identifying molecules that need manual curation
+    - Final sanity check before database insertion
+    
+    Examples
+    --------
+    # Final validation after cleaning pipeline
+    result = validate_smiles_dataset(
+        resource_id="20251204T120000_csv_ABC123.csv", 
+        column_name="smiles_after_tautomer_canonicalization"
+    )
+    
+    # Check validation statistics
+    print(f"Valid: {result['n_valid']}/{result['n_rows']}")
+    print(f"Validation rate: {result['validation_rate']:.2f}%")
+    
+    # As part of a complete cleaning and validation pipeline
+    # Step 1-8: Various cleaning steps...
+    result8 = canonicalize_tautomers_dataset(resource_id=result7["resource_id"], 
+                                             column_name="smiles_after_reionization")
+    # Step 9: Final validation
+    result9 = validate_smiles_dataset(resource_id=result8["resource_id"], 
+                                      column_name="smiles_after_tautomer_canonicalization")
+    
+    # Filter to only valid molecules
+    df = _load_resource(result9["resource_id"])
+    df_valid = df[df["validation_status"] == "Passed"]
+    
+    See Also
+    --------
+    validate_smiles : For processing a list of SMILES strings
+    canonicalize_smiles_dataset : For standardization with implicit validation
+    """
+    df = _load_resource(resource_id)
+    
+    if column_name not in df.columns:
+        raise ValueError(f"Column {column_name} not found in dataset.")
+
+    smiles_list = df[column_name].tolist()
+    validated_smiles, comments = validate_smiles(smiles_list)
+
+    df['validated_smiles'] = validated_smiles
+    df['validation_status'] = comments
+
+    new_resource_id = _store_resource(df, 'csv')
+
+    # Calculate validation statistics
+    n_valid = sum(1 for c in comments if c == "Passed")
+    n_invalid = len(comments) - n_valid
+    validation_rate = (n_valid / len(comments) * 100) if comments else 0.0
+
+    return {
+        "resource_id": new_resource_id,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "comments": dict(Counter(comments)),
+        "preview": df.head(5).to_dict(orient="records"),
+        "note": f"Validation complete. {n_valid} molecules passed, {n_invalid} failed. Validation rate: {validation_rate:.2f}%. Original SMILES strings are preserved unchanged. Valid molecules marked as 'Passed' in validation_status column.",
+        "n_valid": n_valid,
+        "n_invalid": n_invalid,
+        "validation_rate": validation_rate,
+        "suggestions": "Review molecules that failed validation. Consider removing invalid molecules or investigating the cause of failures. Invalid molecules have None in the validated_smiles column and can be filtered out for downstream processing.",
+    }
+
+
 
 
 def get_molecule_standardization_recommendations():
@@ -2110,6 +2581,10 @@ def get_all_cleaning_tools():
         normalize_functional_groups_dataset,
         reionize_smiles,
         reionize_smiles_dataset,
+        disconnect_metals_smiles,
+        disconnect_metals_smiles_dataset,
+        validate_smiles,
+        validate_smiles_dataset,
     ]
 
 
