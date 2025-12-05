@@ -2023,72 +2023,13 @@ def canonicalize_tautomers_dataset(
 
 @loggable
 def normalize_functional_groups(smiles: list[str]) -> tuple[list[str], list[str]]:
-    """
-    Normalize functional groups in SMILES strings using RDKit's Normalizer.
+    """Normalize functional groups (nitro, N-oxide, azide, diazo, sulfoxide, phosphate) to preferred representations.
     
-    This function standardizes functional groups (e.g., nitro groups, N-oxides, azides) 
-    to their preferred representations by fixing "weird valence forms" and ensuring 
-    consistent molecular representations. Normalization is an important standardization 
-    step that comes after basic cleaning but before final canonicalization.
-    
-    Common normalizations include:
-    - Nitro groups: [N+](=O)[O-] → [N+](=O)[O-] (standardized form)
-    - N-oxides: [N+]([O-]) → standardized N-oxide representation
-    - Azides: Correct azide functional group representation
-    - Diazo compounds: Standardized diazo group forms
-    - Sulfoxides and sulfones: Correct sulfur oxidation state representations
-    - Phosphate groups: Standardized phosphorus-oxygen bonding
-    
-    Parameters
-    ----------
-    smiles : list[str]
-        List of SMILES strings to normalize.
-    
-    Returns
-    -------
-    tuple[list[str], list[str]]
-        A tuple containing:
-        - normalized_smiles : list[str]
-            Normalized canonical SMILES strings. Length matches input list.
-            Failed normalizations return None.
-        - comments : list[str]
-            Comments for each SMILES indicating processing status. Length matches input list.
-            - "Passed": Normalization successful
-            - "Failed: Invalid SMILES string": Input could not be parsed
-            - "Failed: Normalization error: <details>": An error occurred during normalization
-    
-    Examples
-    --------
-    # Normalize nitro groups and other functional groups
-    smiles = ["c1ccccc1[N+](=O)[O-]", "CCN(C)=O", "c1ccccc1"]
-    normalized, comments = normalize_functional_groups(smiles)
-    # Returns normalized forms with "Passed" comments
-    
-    # Invalid SMILES handling
-    smiles = ["c1ccccc1[N+](=O)[O-]", "invalid", "CCO"]
-    normalized, comments = normalize_functional_groups(smiles)
-    # Returns with "Failed: Invalid SMILES string" for invalid entry
-    
-    Notes
-    -----
-    - This function automatically applies canonical SMILES generation (isomeric)
-    - Normalization is typically applied after:
-      * Salt removal
-      * Solvent removal
-      * Defragmentation
-    - But before:
-      * Final canonicalization (if separate step)
-      * Tautomer canonicalization
-    - The function preserves stereochemistry information
-    - Some functional groups may have multiple valid representations; this function 
-      standardizes to RDKit's preferred forms
-    
-    See Also
-    --------
-    normalize_functional_groups_dataset : Dataset version of this function
-    neutralize_smiles : For removing charges from molecules
-    canonicalize_smiles : For standard SMILES canonicalization
-    canonicalize_tautomers : For tautomer standardization
+    Args:
+        smiles: List of SMILES strings
+        
+    Returns:
+        (normalized_smiles, comments) where comments are "Passed" or "Failed: <reason>"
     """
     results = [_normalize_smiles(smi) for smi in smiles]
     normalized_smiles = [smi for smi, _ in results]
@@ -2101,97 +2042,16 @@ def normalize_functional_groups_dataset(
     resource_id: str,
     column_name: str
 ) -> dict:
-    """
-    Normalize functional groups in molecules in a specified column of a tabular dataset.
+    """Normalize functional groups (nitro, N-oxide, azide, etc.) to preferred representations in a dataset column.
     
-    This function processes a tabular dataset by standardizing functional groups in SMILES 
-    strings to their preferred representations. It adds two new columns to the dataframe: 
-    one containing the normalized SMILES and another with comments logged during the 
-    normalization process.
-    
-    Functional group normalization fixes "weird valence forms" and ensures consistent 
-    molecular representations for:
-    - Nitro groups, N-oxides, azides
-    - Diazo compounds
-    - Sulfoxides and sulfones
-    - Phosphate groups
-    - Other functional groups with multiple valid representations
-    
-    Parameters
-    ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
-    column_name : str
-        Name of the column containing SMILES strings to be normalized.
-    
-    Returns
-    -------
-    dict
-        A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with normalized data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            normalization (e.g., number of successful operations, failures).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the operation.
-        - suggestions : str
-            Recommendations for next steps.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_functional_group_normalization': Contains the normalized SMILES.
-    - 'comments_after_functional_group_normalization': Contains any comments or warnings 
-      from the normalization process.
-    
-    Typical workflow position:
-    1. Remove salts
-    2. Remove solvents
-    3. Defragment
-    4. **Normalize functional groups** ← This step
-    5. Neutralize charges
-    6. Canonicalize tautomers
-    7. Final canonicalization
-    
-    Examples
-    --------
-    # Typical usage after defragmentation
-    result = normalize_functional_groups_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv", 
-        column_name="smiles_after_defragmentation"
-    )
-    
-    # As part of a cleaning pipeline
-    # Step 1: Remove salts
-    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
-    # Step 2: Defragment
-    result2 = defragment_smiles_dataset(resource_id=result1["resource_id"], 
-                                        column_name="smiles_after_salt_removal")
-    # Step 3: Normalize functional groups
-    result3 = normalize_functional_groups_dataset(resource_id=result2["resource_id"], 
-                                                   column_name="smiles_after_defragmentation")
-    # Step 4: Neutralize
-    result4 = neutralize_smiles_dataset(resource_id=result3["resource_id"], 
-                                        column_name="smiles_after_functional_group_normalization")
-    
-    See Also
-    --------
-    normalize_functional_groups : For processing a list of SMILES strings
-    neutralize_smiles_dataset : For charge neutralization
-    canonicalize_tautomers_dataset : For tautomer standardization
-    defragment_smiles_dataset : For removing disconnected fragments
+    Args:
+        resource_id: Dataset identifier
+        column_name: Column with SMILES to normalize
+        
+    Returns:
+        dict with resource_id, n_rows, columns, comments (counts), preview, note, suggestions
+        
+    Adds columns: smiles_after_functional_group_normalization, comments_after_functional_group_normalization
     """
     df = _load_resource(resource_id)
     
@@ -2311,110 +2171,17 @@ def reionize_smiles_dataset(
     resource_id: str,
     column_name: str
 ) -> dict:
-    """
-    Reionize molecules to their preferred charge distribution in a specified column of a tabular dataset.
+    """Reionize molecules to preferred charge distribution (zwitterions, multi-ionizable compounds) in a dataset column.
     
-    This function processes a tabular dataset by adjusting the charge distribution of 
-    molecules to chemically preferred forms. It adds two new columns to the dataframe: 
-    one containing the reionized SMILES and another with comments logged during the 
-    reionization process.
-    
-    **IMPORTANT**: The output SMILES are reionized AND canonicalized. No additional 
-    canonicalization step is needed after running this function.
-    
-    Reionization is particularly useful for:
-    - Standardizing zwitterionic amino acids and betaines
-    - Handling molecules with multiple ionizable sites
-    - Ensuring consistent charge distributions across a dataset
-    - Correcting protonation states to chemically reasonable forms
-    
-    Parameters
-    ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
-    column_name : str
-        Name of the column containing SMILES strings to be reionized.
-    
-    Returns
-    -------
-    dict
-        A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with reionized data.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - comments : dict
-            Dictionary with counts of different comment types logged during 
-            reionization (e.g., number of successful operations, failures).
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - note : str
-            Explanation of the operation.
-        - warning : str
-            Important warnings about charge state changes.
-        - suggestions : str
-            Recommendations for next steps.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds two new columns to the dataset:
-    - 'smiles_after_reionization': Contains the reionized SMILES.
-    - 'comments_after_reionization': Contains any comments or warnings from the 
-      reionization process.
-    
-    Typical workflow position:
-    1. Remove salts
-    2. Remove solvents
-    3. Defragment
-    4. Normalize functional groups
-    5. **Reionize** ← This step
-    6. Neutralize charges (optional, if complete charge removal desired)
-    7. Canonicalize tautomers
-    8. Final canonicalization
-    
-    Warnings
-    --------
-    - Reionization changes charge states and may not match specific experimental conditions
-    - Zwitterions may be converted to different forms
-    - For pH-dependent studies, reionization may not reflect the desired protonation state
-    
-    Examples
-    --------
-    # Typical usage after functional group normalization
-    result = reionize_smiles_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv", 
-        column_name="smiles_after_functional_group_normalization"
-    )
-    
-    # As part of a cleaning pipeline
-    # Step 1: Remove salts
-    result1 = remove_salts_dataset(resource_id="initial.csv", column_name="smiles")
-    # Step 2: Defragment
-    result2 = defragment_smiles_dataset(resource_id=result1["resource_id"], 
-                                        column_name="smiles_after_salt_removal")
-    # Step 3: Normalize functional groups
-    result3 = normalize_functional_groups_dataset(resource_id=result2["resource_id"], 
-                                                   column_name="smiles_after_defragmentation")
-    # Step 4: Reionize
-    result4 = reionize_smiles_dataset(resource_id=result3["resource_id"], 
-                                      column_name="smiles_after_functional_group_normalization")
-    # Step 5: Neutralize (optional)
-    result5 = neutralize_smiles_dataset(resource_id=result4["resource_id"], 
-                                        column_name="smiles_after_reionization")
-    
-    See Also
-    --------
-    reionize_smiles : For processing a list of SMILES strings
-    normalize_functional_groups_dataset : Should be run BEFORE reionization
-    neutralize_smiles_dataset : For complete charge removal (after reionization)
-    canonicalize_tautomers_dataset : For tautomer standardization
+    Args:
+        resource_id: Dataset identifier
+        column_name: Column with SMILES to reionize
+        
+    Returns:
+        dict with resource_id, n_rows, columns, comments (counts), preview, note, warning, suggestions
+        
+    Adds columns: smiles_after_reionization, comments_after_reionization
+    Output is reionized AND canonicalized.
     """
     df = _load_resource(resource_id)
     
@@ -3427,108 +3194,19 @@ def check_smiles_for_pains_dataset(
     resource_id: str,
     column_name: str
 ) -> dict:
-    """Screen molecules in a dataset for PAINS (Pan-Assay INterference compoundS) substructures.
+    """Screen molecules for PAINS (Pan-Assay INterference compoundS) patterns in a dataset column.
     
-    This function processes a tabular dataset by screening SMILES strings for PAINS patterns
-    from Baell & Holloway 2010. It adds a new column with PAINS screening results for each
-    molecule. This is useful for filtering out problematic molecules before high-throughput
-    screening or drug discovery campaigns.
-    
-    PAINS are substructures that cause false positives in biological assays through
-    non-specific mechanisms like aggregation, redox activity, metal chelation, or
-    covalent modification of assay proteins.
-    
-    Parameters
-    ----------
-    resource_id : str
-        Identifier for the tabular dataset resource to be processed.
-    column_name : str
-        Name of the column containing SMILES strings to screen.
-    
-    Returns
-    -------
-    dict
-        A dictionary containing:
-        - resource_id : str
-            Identifier for the new resource with PAINS screening results.
-        - n_rows : int
-            Total number of rows in the dataset.
-        - columns : list of str
-            List of all column names in the updated dataset.
-        - preview : list of dict
-            Preview of the first 5 rows of the updated dataset.
-        - pains_summary : dict
-            Summary statistics with counts of different screening results:
-            - 'Passed': Number of clean molecules
-            - 'PAINS: <reasons>': Number flagged (by reason)
-            - 'Failed: <error>': Number that failed screening
-        - n_clean : int
-            Number of molecules without PAINS patterns.
-        - n_flagged : int
-            Number of molecules with PAINS patterns.
-        - n_failed : int
-            Number of molecules that failed screening.
-        - flagged_rate : float
-            Percentage of molecules flagged as PAINS.
-        - note : str
-            Explanation of the screening results.
-        - suggestions : str
-            Recommendations for next steps.
-    
-    Raises
-    ------
-    ValueError
-        If the specified column_name is not found in the dataset.
-    
-    Notes
-    -----
-    The function adds one new column to the dataset:
-    - 'pains_screening': Contains screening results in one of three formats:
-      * 'Passed': No PAINS patterns detected (molecule is clean)
-      * 'PAINS: <reasons>': PAINS detected with comma-separated explanations
-      * 'Failed: <error>': Input is invalid or cannot be parsed
-    
-    Typical workflow position:
-    - **After cleaning/standardization**: Screen cleaned molecules before modeling
-    - **Before HTS campaigns**: Filter out known assay interferents
-    - **During hit validation**: Check if active compounds contain PAINS
-    
-    Warnings
-    --------
-    - PAINS patterns are context-specific and were identified from HTS data
-    - Not all flagged molecules are necessarily problematic in all assays
-    - Some PAINS-containing molecules are approved drugs (e.g., phenolics)
-    - Consider the biological context and assay type when filtering
-    - Detection rate varies by dataset composition (typically 30-50% in screening libraries)
-    
-    Examples
-    --------
-    # Screen cleaned molecules for PAINS
-    result = check_smiles_for_pains_dataset(
-        resource_id="20251204T120000_csv_ABC123.csv", 
-        column_name="standardized_smiles"
-    )
-    
-    # Check screening statistics
-    print(f"Clean: {result['n_clean']}/{result['n_rows']}")
-    print(f"Flagged: {result['n_flagged']}/{result['n_rows']} ({result['flagged_rate']:.1f}%)")
-    
-    # Filter to only clean molecules
-    df = _load_resource(result["resource_id"])
-    df_clean = df[df["pains_screening"] == "Passed"]
-    
-    # Identify molecules with specific PAINS patterns
-    df_quinones = df[df["pains_screening"].str.contains("quinone", na=False)]
-    
-    See Also
-    --------
-    check_smiles_for_pains : For processing a list of SMILES strings
-    
-    Reference
-    ---------
-    Baell JB, Holloway GA. New substructure filters for removal of pan assay 
-    interference compounds (PAINS) from screening libraries and for their 
-    exclusion in bioassays. J Med Chem 53 (2010) 2719-2740. doi:10.1021/jm901137j
+    Args:
+        resource_id: Dataset identifier
+        column_name: Column with SMILES to screen
+        
+    Returns:
+        dict with resource_id, n_rows, columns, preview, pains_summary (counts), 
+        n_clean, n_flagged, n_failed, flagged_rate, note, suggestions
+        
+    Adds column: pains_screening with results "Passed", "PAINS: <reasons>", or "Failed: <error>"
+    PAINS are context-specific; not all flagged molecules are problematic in all assays.
+    Reference: Baell & Holloway, J Med Chem 53 (2010) 2719-2740
     """
     df = _load_resource(resource_id)
     
