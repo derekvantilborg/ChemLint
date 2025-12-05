@@ -3,6 +3,7 @@ from typing import Dict, Mapping
 from rdkit.Chem.rdchem import Mol
 from molml_mcp.constants import STRUCTURAL_PATTERNS, FUNCTIONAL_GROUP_PATTERNS
 from rdkit.Chem import MolFromSmiles, MolFromSmarts
+from molml_mcp.infrastructure.logging import loggable
 
 
 def get_available_structural_patterns() -> Mapping[str, Dict[str, str]]:
@@ -334,15 +335,20 @@ def _find_all_patterns_in_smiles(smi: str, smarts_dict: dict) -> list[str]:
     return matched_patterns
 
 
-def smiles_has_structural_pattern(smiles: str, smarts_pattern) -> bool:
-    """Check if a SMILES string contains a specified structural pattern.
+@loggable
+def smiles_has_structural_pattern(smiles: str, smarts_pattern: str) -> bool:
+    """Check if a molecule contains a specific SMARTS structural pattern.
 
     Args:
-        smi (str): The SMILES string to analyze.
-        smarts_pattern (str): The SMARTS pattern string to search for.
+        smiles: SMILES string of the molecule to analyze
+        smarts_pattern: SMARTS pattern string to search for (e.g., 'c1ccccc1' for benzene)
 
     Returns:
-        bool: True if the pattern is found, False otherwise.
+        bool: True if pattern is found, False if not found or invalid input
+        
+    Example:
+        smiles_has_structural_pattern('c1ccccc1', 'c1ccccc1')  # Returns True (benzene)
+        smiles_has_structural_pattern('CCCC', 'c1ccccc1')      # Returns False (no benzene)
     """
     mol = MolFromSmiles(smiles)
     if mol is None:
@@ -350,14 +356,23 @@ def smiles_has_structural_pattern(smiles: str, smarts_pattern) -> bool:
     return _mol_has_pattern(mol, smarts_pattern)
 
 
+@loggable
 def find_structural_patterns_in_smiles(smiles: str) -> str:
-    """Find all structural patterns in a given SMILES string.
+    """Identify all structural features present in a molecule.
+    
+    Detects 30 structural patterns including chirality, ring systems, bonds, chains, and
+    molecular topology features using predefined SMARTS patterns.
     
     Args:
-        smiles: SMILES string to analyze
+        smiles: SMILES string of the molecule to analyze
         
     Returns:
-        str: Comma-separated pattern names, or empty string if no matches or invalid input
+        str: Comma-separated list of detected pattern names (e.g., "Ring atom, Rotatable bond"),
+             or empty string if no patterns found or invalid input
+             
+    Example:
+        find_structural_patterns_in_smiles('c1ccccc1')  # Returns "Ring atom, Unfused benzene ring"
+        find_structural_patterns_in_smiles('CCCC')      # Returns "Rotatable bond"
     """
     try:
         pattern_matches = _find_all_patterns_in_smiles(smiles, get_available_structural_patterns())
@@ -366,20 +381,93 @@ def find_structural_patterns_in_smiles(smiles: str) -> str:
         return ''
 
 
+@loggable
 def find_functional_group_patterns_in_smiles(smiles: str) -> str:
-    """Find all functional group patterns in a given SMILES string.
+    """Identify all functional groups present in a molecule.
+    
+    Detects 58 functional group patterns including carbonyls, amines, alcohols, ethers,
+    aromatics, halogens, and other common organic functional groups using predefined SMARTS.
     
     Args:
-        smiles: SMILES string to analyze
+        smiles: SMILES string of the molecule to analyze
         
     Returns:
-        str: Comma-separated pattern names, or empty string if no matches or invalid input
+        str: Comma-separated list of detected functional group names (e.g., "Carbonyl group, Ester"),
+             or empty string if no functional groups found or invalid input
+             
+    Example:
+        find_functional_group_patterns_in_smiles('CC(=O)OCC')  # Returns "Carbonyl group, Ester, Ether"
+        find_functional_group_patterns_in_smiles('CC(O)C')     # Returns "Hydroxyl, C-bound Hydroxyl"
     """
     try:
         pattern_matches = _find_all_patterns_in_smiles(smiles, get_available_functional_group_patterns())
         return ', '.join(pattern_matches)
     except Exception:
         return ''   
+    
+
+@loggable
+def find_functional_group_patterns_in_list_of_smiles(smiles_list: list[str]) -> list[str]:
+    """Identify functional groups in multiple molecules at once.
+    
+    Batch version of find_functional_group_patterns_in_smiles() that processes a list
+    of SMILES strings and returns functional group patterns for each.
+    
+    Args:
+        smiles_list: List of SMILES strings to analyze
+        
+    Returns:
+        list[str]: List of comma-separated functional group names for each input molecule.
+                   Each entry corresponds to one input SMILES (empty string if no groups found).
+                   
+    Example:
+        find_functional_group_patterns_in_list_of_smiles(['CCO', 'CC(=O)C'])
+        # Returns ['Hydroxyl, C-bound Hydroxyl', 'Carbonyl group, Ketone']
+    """ 
+    results = []
+    for smi in smiles_list:
+        patterns = find_functional_group_patterns_in_smiles(smi)
+        results.append(patterns)
+    return results
+
+
+@loggable
+def find_structural_patterns_in_list_of_smiles(smiles_list: list[str]) -> list[str]:
+    """Identify structural features in multiple molecules at once.
+    
+    Batch version of find_structural_patterns_in_smiles() that processes a list
+    of SMILES strings and returns structural patterns for each.
+    
+    Args:
+        smiles_list: List of SMILES strings to analyze
+        
+    Returns:
+        list[str]: List of comma-separated structural pattern names for each input molecule.
+                   Each entry corresponds to one input SMILES (empty string if no patterns found).
+                   
+    Example:
+        find_structural_patterns_in_list_of_smiles(['c1ccccc1', 'CCCC'])
+        # Returns ['Ring atom, Unfused benzene ring', 'Rotatable bond']
+    """ 
+    results = []
+    for smi in smiles_list:
+        patterns = find_structural_patterns_in_smiles(smi)
+        results.append(patterns)
+    return results
+
+
+
+def get_all_substructure_matching_tools():
+    """Return a list of all molecular cleaning tools."""
+    return [
+        get_available_structural_patterns,
+        get_available_functional_group_patterns,
+        smiles_has_structural_pattern,
+        find_structural_patterns_in_smiles,
+        find_functional_group_patterns_in_smiles,
+        find_functional_group_patterns_in_list_of_smiles,
+        find_structural_patterns_in_list_of_smiles,
+    ]
 
 
 
