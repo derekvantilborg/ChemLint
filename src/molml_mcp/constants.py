@@ -98,10 +98,6 @@ STRUCTURAL_PATTERNS: Dict[str, Dict[str, str]] = {
         "pattern": "[$([NX1]#*)]",
         "comment": "Nitrogen in a triple bond (e.g. nitriles, isonitriles).",
     },
-    "Divalent Oxygen": {
-        "pattern": "[$([OX2])]",
-        "comment": "Generic divalent oxygen (e.g. in alcohols, ethers, carbonyls, etc.).",
-    },
 
     # chains and branching
     "Long_chain groups": {
@@ -145,18 +141,6 @@ STRUCTURAL_PATTERNS: Dict[str, Dict[str, str]] = {
     "Para": {
         "pattern": "*-!:aaaa-!:*",
         "comment": "Para-substituted aromatic ring: two substituents separated by 3 aromatic bonds.",
-    },
-    "Acylic-bonds": {
-        "pattern": "*!@*",
-        "comment": "Any non-ring bond (at least one endpoint is not in a ring).",
-    },
-    "Single bond and not in a ring": {
-        "pattern": "*-!@*",
-        "comment": "Single, non-ring bond between two atoms.",
-    },
-    "Non-ring atom": {
-        "pattern": "[!R]",
-        "comment": "Atom that is not a member of any ring.",
     },
     "Ring atom": {
         "pattern": "[R]",
@@ -257,7 +241,7 @@ FUNCTIONAL_GROUP_PATTERNS: Dict[str, Dict[str, str]] = {
         "pattern": "[CX3](=O)[OX1H0-,OX2H1]",
         "comment": "Carboxylic acid or its conjugate base: C(=O)-OH / C(=O)-O(-).",
     },
-    "Ester Also hits anhydrides": {
+    "Ester": {
         "pattern": "[#6][CX3](=O)[OX2H0][#6]",
         "comment": "Simple ester R-C(=O)-O-R'; does not generally capture anhydrides.",
     },
@@ -298,10 +282,6 @@ FUNCTIONAL_GROUP_PATTERNS: Dict[str, Dict[str, str]] = {
     "Mono-Hydrogenated Cation": {
         "pattern": "[+H]",
         "comment": "Any atom with a positive charge and exactly one attached hydrogen.",
-    },
-    "Not Mono-Hydrogenated": {
-        "pattern": "[!H1]",
-        "comment": "Atoms that do not have exactly one attached hydrogen (broad detector).",
     },
 
     # amide-related N
