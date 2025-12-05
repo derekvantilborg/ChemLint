@@ -6,6 +6,7 @@ from molml_mcp.tools.core_mol import get_all_cleaning_tools
 from molml_mcp.tools.core_mol.descriptors import list_rdkit_descriptors, calculate_descriptors
 from molml_mcp.tools.core_mol.visualize import smiles_to_acs1996_png, smiles_grid_to_acs1996_png
 from molml_mcp.tools.core_mol.smiles_ops import enumerate_stereo_isomers_smiles
+from molml_mcp.tools.core_mol.substructure_matching import get_all_substructure_matching_tools
 
 # create an MCP server 
 mcp = FastMCP("molml-mcp") 
@@ -16,6 +17,10 @@ for tool_func in get_all_dataset_tools():
 
 # Add molecular cleaning tools
 for tool_func in get_all_cleaning_tools():
+    mcp.add_tool(tool_func)
+
+# Add substructure matching tools
+for tool_func in get_all_substructure_matching_tools():
     mcp.add_tool(tool_func)
 
 # Add stereoisomer smiles_ops tool
