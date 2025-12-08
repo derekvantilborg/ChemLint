@@ -845,6 +845,247 @@ def drop_empty_rows(input_filename: str, project_manifest_path: str, output_file
     }
 
 
+@loggable
+def drop_columns(
+    input_filename: str,
+    columns_to_drop: list[str],
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = 'Dropped specified columns from dataset'
+) -> dict:
+    """
+    Drop specified columns from a dataset and save as a new CSV.
+    
+    Removes one or more columns from a dataset and creates a new resource with
+    the remaining columns. This is useful for removing intermediate processing
+    columns, comment columns, or any other columns that are no longer needed.
+
+    Parameters
+    ----------
+    input_filename : str
+        Base filename of the input dataset resource.
+    columns_to_drop : list[str]
+        List of column names to drop from the dataset.
+    project_manifest_path : str
+        Path to the project manifest file for tracking this resource.
+    output_filename : str
+        Base filename for the stored resource (without extension).
+    explanation : str
+        Brief description of what columns were dropped and why.
+
+    Returns
+    -------
+    dict
+        {
+            "output_filename": str,        # new dataset without dropped columns
+            "n_rows": int,                 # number of rows (unchanged)
+            "n_columns_before": int,       # number of columns before dropping
+            "n_columns_after": int,        # number of columns after dropping
+            "columns_dropped": list[str],  # columns that were dropped
+            "columns_remaining": list[str],# columns that remain
+            "preview": list[dict],         # first 5 rows
+        }
+    
+    Raises
+    ------
+    ValueError
+        If any specified column is not found in the dataset.
+    
+    Examples
+    --------
+    # Drop all comment columns after cleaning pipeline
+    drop_columns(
+        input_filename="cleaned_data_A3F2B1D4.csv",
+        columns_to_drop=["comments_after_canonicalization", 
+                        "comments_after_salt_removal"],
+        project_manifest_path="/path/to/manifest.json",
+        output_filename="cleaned_final",
+        explanation="Removed intermediate comment columns"
+    )
+    
+    # Drop original SMILES column after standardization
+    drop_columns(
+        input_filename="standardized_A3F2B1D4.csv",
+        columns_to_drop=["smiles"],
+        project_manifest_path="/path/to/manifest.json",
+        output_filename="final_standardized",
+        explanation="Removed original SMILES, keeping only standardized_smiles"
+    )
+    
+    # Drop multiple intermediate columns
+    drop_columns(
+        input_filename="pipeline_output_A3F2B1D4.csv",
+        columns_to_drop=["smiles_after_canonicalization",
+                        "smiles_after_salt_removal",
+                        "smiles_after_solvent_removal"],
+        project_manifest_path="/path/to/manifest.json",
+        output_filename="cleaned_minimal",
+        explanation="Removed intermediate SMILES columns, keeping only final result"
+    )
+    
+    Notes
+    -----
+    - All specified columns must exist in the dataset, or an error will be raised
+    - At least one column must remain after dropping (cannot drop all columns)
+    - The operation creates a new resource; the original dataset is unchanged
+    - Row order and values are preserved exactly
+    """
+    import pandas as pd
+    
+    df = _load_resource(project_manifest_path, input_filename)
+    n_columns_before = len(df.columns)
+    
+    # Validate that all columns to drop exist
+    missing_columns = [col for col in columns_to_drop if col not in df.columns]
+    if missing_columns:
+        raise ValueError(
+            f"Column(s) not found in dataset: {missing_columns}. "
+            f"Available columns: {list(df.columns)}"
+        )
+    
+    # Validate that we're not dropping all columns
+    if len(columns_to_drop) >= len(df.columns):
+        raise ValueError(
+            f"Cannot drop all columns. Dataset has {len(df.columns)} columns, "
+            f"attempting to drop {len(columns_to_drop)}."
+        )
+    
+    # Drop the columns
+    df_reduced = df.drop(columns=columns_to_drop)
+    
+    output_filename = _store_resource(df_reduced, project_manifest_path, output_filename, explanation, 'csv')
+    
+    return {
+        "output_filename": output_filename,
+        "n_rows": len(df_reduced),
+        "n_columns_before": n_columns_before,
+        "n_columns_after": len(df_reduced.columns),
+        "columns_dropped": columns_to_drop,
+        "columns_remaining": list(df_reduced.columns),
+        "preview": df_reduced.head(5).to_dict(orient="records"),
+    }
+
+
+@loggable
+def keep_columns(
+    input_filename: str,
+    columns_to_keep: list[str],
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = 'Kept specified columns from dataset'
+) -> dict:
+    """
+    Keep only specified columns from a dataset and save as a new CSV.
+    
+    Retains only the specified columns from a dataset and creates a new resource
+    with just those columns. This is useful for creating a minimal dataset with
+    only the essential columns needed for downstream analysis.
+
+    Parameters
+    ----------
+    input_filename : str
+        Base filename of the input dataset resource.
+    columns_to_keep : list[str]
+        List of column names to keep in the dataset. All other columns will be dropped.
+    project_manifest_path : str
+        Path to the project manifest file for tracking this resource.
+    output_filename : str
+        Base filename for the stored resource (without extension).
+    explanation : str
+        Brief description of what columns were kept and why.
+
+    Returns
+    -------
+    dict
+        {
+            "output_filename": str,        # new dataset with only kept columns
+            "n_rows": int,                 # number of rows (unchanged)
+            "n_columns_before": int,       # number of columns before filtering
+            "n_columns_after": int,        # number of columns after filtering
+            "columns_kept": list[str],     # columns that were kept
+            "columns_dropped": list[str],  # columns that were dropped
+            "preview": list[dict],         # first 5 rows
+        }
+    
+    Raises
+    ------
+    ValueError
+        If any specified column is not found in the dataset, or if no columns
+        are specified to keep.
+    
+    Examples
+    --------
+    # Keep only SMILES and label columns for ML training
+    keep_columns(
+        input_filename="full_dataset_A3F2B1D4.csv",
+        columns_to_keep=["standardized_smiles", "label"],
+        project_manifest_path="/path/to/manifest.json",
+        output_filename="training_data",
+        explanation="Kept only SMILES and label for model training"
+    )
+    
+    # Keep only final standardized SMILES
+    keep_columns(
+        input_filename="pipeline_output_A3F2B1D4.csv",
+        columns_to_keep=["standardized_smiles", "validation_status"],
+        project_manifest_path="/path/to/manifest.json",
+        output_filename="final_smiles",
+        explanation="Kept only standardized SMILES and validation status"
+    )
+    
+    # Keep specific identifier and result columns
+    keep_columns(
+        input_filename="analysis_results_A3F2B1D4.csv",
+        columns_to_keep=["molecule_id", "smiles", "predicted_activity", "confidence"],
+        project_manifest_path="/path/to/manifest.json",
+        output_filename="predictions",
+        explanation="Kept only ID, SMILES, and prediction results"
+    )
+    
+    Notes
+    -----
+    - All specified columns must exist in the dataset, or an error will be raised
+    - At least one column must be specified to keep
+    - The operation creates a new resource; the original dataset is unchanged
+    - Row order and values are preserved exactly
+    - This is the inverse operation of drop_columns()
+    """
+    import pandas as pd
+    
+    df = _load_resource(project_manifest_path, input_filename)
+    n_columns_before = len(df.columns)
+    
+    # Validate that we have columns to keep
+    if not columns_to_keep:
+        raise ValueError("Must specify at least one column to keep.")
+    
+    # Validate that all columns to keep exist
+    missing_columns = [col for col in columns_to_keep if col not in df.columns]
+    if missing_columns:
+        raise ValueError(
+            f"Column(s) not found in dataset: {missing_columns}. "
+            f"Available columns: {list(df.columns)}"
+        )
+    
+    # Keep only the specified columns
+    df_reduced = df[columns_to_keep]
+    
+    # Determine which columns were dropped
+    columns_dropped = [col for col in df.columns if col not in columns_to_keep]
+    
+    output_filename = _store_resource(df_reduced, project_manifest_path, output_filename, explanation, 'csv')
+    
+    return {
+        "output_filename": output_filename,
+        "n_rows": len(df_reduced),
+        "n_columns_before": n_columns_before,
+        "n_columns_after": len(df_reduced.columns),
+        "columns_kept": columns_to_keep,
+        "columns_dropped": columns_dropped,
+        "preview": df_reduced.head(5).to_dict(orient="records"),
+    }
+
+
 def get_all_dataset_tools():
     """Return a list of all dataset manipulation tools."""
     return [
@@ -858,5 +1099,7 @@ def get_all_dataset_tools():
         keep_from_dataset,
         deduplicate_molecules_dataset,
         drop_duplicate_rows,
-        drop_empty_rows
+        drop_empty_rows,
+        drop_columns,
+        keep_columns
     ]
