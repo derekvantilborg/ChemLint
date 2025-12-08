@@ -97,7 +97,7 @@ def store_csv_as_dataset_from_text(csv_content: str, project_manifest_path: str,
     }
 
 
-def get_dataset_head(resource_id: str, n_rows: int = 10) -> dict:
+def get_dataset_head(project_manifest_path: str, input_filename: str, n_rows: int = 10) -> dict:
     """
     Get the first n rows of a dataset for quick inspection.
     
@@ -106,8 +106,10 @@ def get_dataset_head(resource_id: str, n_rows: int = 10) -> dict:
 
     Parameters
     ----------
-    resource_id : str
-        Identifier for the dataset resource.
+    project_manifest_path : str
+        Path to the project manifest file.
+    input_filename : str
+        Base filename of the dataset resource.
     n_rows : int, default=10
         Number of rows to return from the top of the dataset.
 
@@ -115,7 +117,7 @@ def get_dataset_head(resource_id: str, n_rows: int = 10) -> dict:
     -------
     dict
         {
-            "resource_id": str,       # original resource identifier
+            "input_filename": str,    # original resource identifier
             "n_rows_returned": int,   # number of rows returned
             "n_rows_total": int,      # total rows in dataset
             "columns": list[str],     # column names
@@ -125,21 +127,21 @@ def get_dataset_head(resource_id: str, n_rows: int = 10) -> dict:
     Examples
     --------
     # Get first 10 rows (default)
-    get_dataset_head(rid)
+    get_dataset_head(manifest_path, 'my_dataset')
     
     # Get first 20 rows
-    get_dataset_head(rid, n_rows=20)
+    get_dataset_head(manifest_path, 'my_dataset', n_rows=20)
     """
     import pandas as pd
     
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     n_total = len(df)
     
     # Get the head
     head_df = df.head(n_rows)
     
     return {
-        "resource_id": resource_id,
+        "input_filename": input_filename,
         "n_rows_returned": len(head_df),
         "n_rows_total": n_total,
         "columns": list(df.columns),
@@ -147,7 +149,7 @@ def get_dataset_head(resource_id: str, n_rows: int = 10) -> dict:
     }
 
 
-def get_dataset_full(resource_id: str, max_rows: int = 10000) -> dict:
+def get_dataset_full(project_manifest_path: str, input_filename: str, max_rows: int = 10000) -> dict:
     """
     Get the entire dataset content.
     
@@ -156,8 +158,10 @@ def get_dataset_full(resource_id: str, max_rows: int = 10000) -> dict:
 
     Parameters
     ----------
-    resource_id : str
-        Identifier for the dataset resource.
+    project_manifest_path : str
+        Path to the project manifest file.
+    input_filename : str
+        Base filename of the dataset resource.
     max_rows : int, default=10000
         Maximum number of rows to return (safety limit to prevent overwhelming output).
 
@@ -165,7 +169,7 @@ def get_dataset_full(resource_id: str, max_rows: int = 10000) -> dict:
     -------
     dict
         {
-            "resource_id": str,       # original resource identifier
+            "input_filename": str,    # original resource identifier
             "n_rows_returned": int,   # number of rows returned
             "n_rows_total": int,      # total rows in dataset
             "columns": list[str],     # column names
@@ -176,10 +180,10 @@ def get_dataset_full(resource_id: str, max_rows: int = 10000) -> dict:
     Examples
     --------
     # Get entire dataset (up to 10000 rows)
-    get_dataset_full(rid)
+    get_dataset_full(manifest_path, 'my_dataset')
     
     # Get entire dataset with higher limit
-    get_dataset_full(rid, max_rows=50000)
+    get_dataset_full(manifest_path, 'my_dataset', max_rows=50000)
     
     Notes
     -----
@@ -188,7 +192,7 @@ def get_dataset_full(resource_id: str, max_rows: int = 10000) -> dict:
     """
     import pandas as pd
     
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     n_total = len(df)
     
     # Check if we need to truncate
@@ -196,7 +200,7 @@ def get_dataset_full(resource_id: str, max_rows: int = 10000) -> dict:
     result_df = df.head(max_rows) if truncated else df
     
     return {
-        "resource_id": resource_id,
+        "input_filename": input_filename,
         "n_rows_returned": len(result_df),
         "n_rows_total": n_total,
         "columns": list(df.columns),
@@ -205,7 +209,7 @@ def get_dataset_full(resource_id: str, max_rows: int = 10000) -> dict:
     }
 
 
-def get_dataset_summary(resource_id: str, columns: list[str] | None = None) -> dict:
+def get_dataset_summary(project_manifest_path: str, input_filename: str, columns: list[str] | None = None) -> dict:
     """
     Get a comprehensive summary of a dataset, similar to R's summary() function.
     
@@ -215,8 +219,10 @@ def get_dataset_summary(resource_id: str, columns: list[str] | None = None) -> d
 
     Parameters
     ----------
-    resource_id : str
-        Identifier for the dataset resource.
+    project_manifest_path : str
+        Path to the project manifest file.
+    input_filename : str
+        Base filename of the dataset resource.
     columns : list[str] | None, optional
         List of specific column names to summarize. If None, all columns are summarized.
         This is useful for large dataframes with many columns where you only want to
@@ -273,7 +279,7 @@ def get_dataset_summary(resource_id: str, columns: list[str] | None = None) -> d
     import pandas as pd
     import numpy as np
     
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     n_rows = len(df)
     n_columns = len(df.columns)
     
@@ -361,7 +367,7 @@ def get_dataset_summary(resource_id: str, columns: list[str] | None = None) -> d
         column_summaries[col] = summary
     
     return {
-        "resource_id": resource_id,
+        "input_filename": input_filename,
         "n_rows": n_rows,
         "n_columns": n_columns,
         "n_columns_summarized": len(cols_to_summarize),
@@ -369,7 +375,7 @@ def get_dataset_summary(resource_id: str, columns: list[str] | None = None) -> d
     }
 
 
-def inspect_dataset_rows(resource_id: str, row_indices: list[int] | None = None, 
+def inspect_dataset_rows(project_manifest_path: str, input_filename: str, row_indices: list[int] | None = None, 
                          filter_condition: str | None = None, max_rows: int = 100) -> dict:
     """
     Inspect or filter rows from a dataset by index or complex conditions.
@@ -386,8 +392,10 @@ def inspect_dataset_rows(resource_id: str, row_indices: list[int] | None = None,
 
     Parameters
     ----------
-    resource_id : str
-        Identifier for the dataset resource.
+    project_manifest_path : str
+        Path to the project manifest file.
+    input_filename : str
+        Base filename of the dataset resource.
     row_indices : list[int] | None
         List of row indices (0-based) to retrieve. If provided, filter_condition is ignored.
     filter_condition : str | None
@@ -471,7 +479,7 @@ def inspect_dataset_rows(resource_id: str, row_indices: list[int] | None = None,
     """
     import pandas as pd
     
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     n_total = len(df)
     
     # Select rows by index or filter
@@ -499,7 +507,7 @@ def inspect_dataset_rows(resource_id: str, row_indices: list[int] | None = None,
         raise ValueError("Must provide either row_indices or filter_condition")
     
     return {
-        "resource_id": resource_id,
+        "input_filename": input_filename,
         "n_rows_returned": len(selected_df),
         "n_rows_total": n_total,
         "columns": list(df.columns),
@@ -509,7 +517,7 @@ def inspect_dataset_rows(resource_id: str, row_indices: list[int] | None = None,
 
 
 @loggable
-def drop_from_dataset(resource_id: str, column_name: str, condition: str, project_manifest_path: str, filename: str, explanation: str) -> dict:
+def drop_from_dataset(input_filename: str, column_name: str, condition: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Drop rows from a dataset based on SIMPLE conditions (exact match or null check).
     
@@ -525,8 +533,8 @@ def drop_from_dataset(resource_id: str, column_name: str, condition: str, projec
 
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource.
+    input_filename : str
+        Base filename of the input dataset resource.
     column_name : str
         Name of the column to check.
     condition : str
@@ -540,7 +548,7 @@ def drop_from_dataset(resource_id: str, column_name: str, condition: str, projec
         - ❌ 'is None' (with quotes around None) → ✅ "is None" (literal string)
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
+    output_filename : str
         Base filename for the stored resource (without extension).
     explanation : str
         Brief description of what filtering was applied.
@@ -578,7 +586,7 @@ def drop_from_dataset(resource_id: str, column_name: str, condition: str, projec
     """
     import pandas as pd
     
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -588,9 +596,9 @@ def drop_from_dataset(resource_id: str, column_name: str, condition: str, projec
     else:
         df_cleaned = df[df[column_name] != condition]
 
-    new_resource_id = _store_resource(df_cleaned, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df_cleaned, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df_cleaned),
         "columns": list(df_cleaned.columns),
         "preview": df_cleaned.head(5).to_dict(orient="records"),
@@ -598,7 +606,7 @@ def drop_from_dataset(resource_id: str, column_name: str, condition: str, projec
 
 
 @loggable
-def keep_from_dataset(resource_id: str, column_name: str, condition: str, project_manifest_path: str, filename: str, explanation: str) -> dict:
+def keep_from_dataset(input_filename: str, column_name: str, condition: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Keep only rows from a dataset based on SIMPLE conditions (exact match or null check).
     
@@ -614,8 +622,8 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str, projec
 
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource.
+    input_filename : str
+        Base filename of the input dataset resource.
     column_name : str
         Name of the column to check.
     condition : str
@@ -629,7 +637,7 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str, projec
         - ❌ 'is None' (with quotes around None) → ✅ "is None" (literal string)
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
+    output_filename : str
         Base filename for the stored resource (without extension).
     explanation : str
         Brief description of what filtering was applied.
@@ -667,7 +675,7 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str, projec
     """
     import pandas as pd
     
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     
     if column_name not in df.columns:
         raise ValueError(f"Column {column_name} not found in dataset.")
@@ -677,9 +685,9 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str, projec
     else:
         df_filtered = df[df[column_name] == condition]
 
-    new_resource_id = _store_resource(df_filtered, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df_filtered, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows": len(df_filtered),
         "columns": list(df_filtered.columns),
         "preview": df_filtered.head(5).to_dict(orient="records"),
@@ -687,19 +695,19 @@ def keep_from_dataset(resource_id: str, column_name: str, condition: str, projec
 
 
 @loggable
-def deduplicate_molecules_dataset(resource_id: str, molecule_id_column: str, project_manifest_path: str, filename: str, explanation: str) -> dict:
+def deduplicate_molecules_dataset(input_filename: str, molecule_id_column: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Remove duplicate entries from a dataset based on a specified molecule identifier column. This should be a unique identifier for each molecule.
 
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource.
+    input_filename : str
+        Base filename of the input dataset resource.
     molecule_id_column : str
         Name of the column containing unique molecule identifiers.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
+    output_filename : str
         Base filename for the stored resource (without extension).
     explanation : str
         Brief description of the deduplication performed.
@@ -711,7 +719,7 @@ def deduplicate_molecules_dataset(resource_id: str, molecule_id_column: str, pro
     """
     import pandas as pd
 
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     n_rows_before = len(df)
 
     if molecule_id_column not in df.columns:
@@ -719,9 +727,9 @@ def deduplicate_molecules_dataset(resource_id: str, molecule_id_column: str, pro
 
     df_deduplicated = df.drop_duplicates(subset=[molecule_id_column])
 
-    new_resource_id = _store_resource(df_deduplicated, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df_deduplicated, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows_before": n_rows_before,
         "n_rows_after": len(df_deduplicated),
         "columns": list(df_deduplicated.columns),
@@ -730,20 +738,20 @@ def deduplicate_molecules_dataset(resource_id: str, molecule_id_column: str, pro
 
 
 @loggable
-def drop_duplicate_rows(resource_id: str, subset_columns: list[str] | None, project_manifest_path: str, filename: str, explanation: str) -> dict:
+def drop_duplicate_rows(input_filename: str, subset_columns: list[str] | None, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Remove duplicate rows from a dataset based on specified subset of columns.
 
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource.
+    input_filename : str
+        Base filename of the input dataset resource.
     subset_columns : list[str] | None
         List of column names to consider for identifying duplicates.
         If None, all columns are used to identify duplicates.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
+    output_filename : str
         Base filename for the stored resource (without extension).
     explanation : str
         Brief description of the deduplication performed.
@@ -755,7 +763,7 @@ def drop_duplicate_rows(resource_id: str, subset_columns: list[str] | None, proj
     """
     import pandas as pd
 
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     n_rows_before = len(df)
 
     if subset_columns is not None:
@@ -765,9 +773,9 @@ def drop_duplicate_rows(resource_id: str, subset_columns: list[str] | None, proj
 
     df_deduplicated = df.drop_duplicates(subset=subset_columns)
 
-    new_resource_id = _store_resource(df_deduplicated, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df_deduplicated, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows_before": n_rows_before,
         "n_rows_after": len(df_deduplicated),
         "columns": list(df_deduplicated.columns),
@@ -776,17 +784,17 @@ def drop_duplicate_rows(resource_id: str, subset_columns: list[str] | None, proj
 
 
 @loggable
-def drop_empty_rows(resource_id: str, project_manifest_path: str, filename: str, explanation: str) -> dict:
+def drop_empty_rows(input_filename: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
     Remove rows from a dataset that are completely empty (all columns are null).
 
     Parameters
     ----------
-    resource_id : str
-        Identifier for the tabular dataset resource.
+    input_filename : str
+        Base filename of the input dataset resource.
     project_manifest_path : str
         Path to the project manifest file for tracking this resource.
-    filename : str
+    output_filename : str
         Base filename for the stored resource (without extension).
     explanation : str
         Brief description of the cleaning performed.
@@ -798,14 +806,14 @@ def drop_empty_rows(resource_id: str, project_manifest_path: str, filename: str,
     """
     import pandas as pd
 
-    df = _load_resource(resource_id)
+    df = _load_resource(project_manifest_path, input_filename)
     n_rows_before = len(df)
 
     df_non_empty = df.dropna(how='all')
 
-    new_resource_id = _store_resource(df_non_empty, project_manifest_path, filename, explanation, 'csv')
+    output_filename_id = _store_resource(df_non_empty, project_manifest_path, output_filename, explanation, 'csv')
     return {
-        "resource_id": new_resource_id,
+        "output_filename_id": output_filename_id,
         "n_rows_before": n_rows_before,
         "n_rows_after": len(df_non_empty),
         "columns": list(df_non_empty.columns),
