@@ -723,7 +723,10 @@ def keep_from_dataset(input_filename: str, column_name: str, condition: str, pro
 @loggable
 def deduplicate_molecules_dataset(input_filename: str, molecule_id_column: str, project_manifest_path: str, output_filename: str, explanation: str) -> dict:
     """
-    Remove duplicate entries from a dataset based on a specified molecule identifier column. This should be a unique identifier for each molecule.
+    Remove duplicate entries from a dataset based on a specified molecule identifier column. This should be a unique identifier for each molecule, 
+    ideally after SMILES standardization.
+
+    **IT IS STRONGLY RECOMMENDED TO USE inspect_duplicates_dataset function FIRST TO REVIEW DUPLICATES BEFORE REMOVAL.**
 
     Parameters
     ----------
