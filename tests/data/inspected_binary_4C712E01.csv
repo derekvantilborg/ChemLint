@@ -1,0 +1,8 @@
+SMILES,activity,other_col,merge_strategy
+CCO,1,a,drop
+CCO,1,b,drop
+CCO,0,c,drop
+CCC,1,d,drop
+CCC,0,e,drop
+CCCC,1,f,unique
+CCCCC,1,g,unique

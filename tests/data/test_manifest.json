@@ -1,0 +1,253 @@
+{
+    "project_name": "test",
+    "created_at": "2025-12-08 15:33:42.689572",
+    "resources": [
+        {
+            "filename": "cleaning_test",
+            "type_tag": "csv",
+            "explaination": "Test dataset for SMILES cleaning functions",
+            "timestamp": "2025-12-08 15:33:42.690081",
+            "parent_function_name": "manual_registration",
+            "parent_function_inputs": {},
+            "module_name": "setup_script"
+        },
+        {
+            "filename": "step1_canonicalized",
+            "type_tag": "csv",
+            "explaination": "Step 1: Canonicalization",
+            "timestamp": "2025-12-08 15:35:32.495499",
+            "parent_function_name": "canonicalize_smiles_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaning_test",
+                "column_name": "smiles",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/test_manifest.json",
+                "output_filename": "step1_canonicalized",
+                "explanation": "Step 1: Canonicalization"
+            },
+            "module_name": "molml_mcp.tools.core_mol.cleaning"
+        },
+        {
+            "filename": "step2_desalted",
+            "type_tag": "csv",
+            "explaination": "Step 2: Salt removal",
+            "timestamp": "2025-12-08 15:35:32.517025",
+            "parent_function_name": "remove_salts_dataset",
+            "parent_function_inputs": {
+                "input_filename": "step1_canonicalized",
+                "column_name": "smiles_after_canonicalization",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/test_manifest.json",
+                "output_filename": "step2_desalted",
+                "explanation": "Step 2: Salt removal",
+                "salt_smarts": "[Cl,Na,Mg,Ca,K,Br,Zn,Ag,Al,Li,I,O,N,H]"
+            },
+            "module_name": "molml_mcp.tools.core_mol.cleaning"
+        },
+        {
+            "filename": "step3_no_solvents",
+            "type_tag": "csv",
+            "explaination": "Step 3: Solvent removal",
+            "timestamp": "2025-12-08 15:35:32.519765",
+            "parent_function_name": "remove_common_solvents_dataset",
+            "parent_function_inputs": {
+                "input_filename": "step2_desalted",
+                "column_name": "smiles_after_salt_removal",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/test_manifest.json",
+                "output_filename": "step3_no_solvents",
+                "explanation": "Step 3: Solvent removal"
+            },
+            "module_name": "molml_mcp.tools.core_mol.cleaning"
+        },
+        {
+            "filename": "step4_defragmented",
+            "type_tag": "csv",
+            "explaination": "Step 4: Defragmentation",
+            "timestamp": "2025-12-08 15:35:32.522069",
+            "parent_function_name": "defragment_smiles_dataset",
+            "parent_function_inputs": {
+                "input_filename": "step3_no_solvents",
+                "column_name": "smiles_after_solvent_removal",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/test_manifest.json",
+                "output_filename": "step4_defragmented",
+                "explanation": "Step 4: Defragmentation",
+                "keep_largest_fragment": true
+            },
+            "module_name": "molml_mcp.tools.core_mol.cleaning"
+        },
+        {
+            "filename": "step5_neutralized",
+            "type_tag": "csv",
+            "explaination": "Step 5: Neutralization",
+            "timestamp": "2025-12-08 15:35:32.527130",
+            "parent_function_name": "neutralize_smiles_dataset",
+            "parent_function_inputs": {
+                "input_filename": "step4_defragmented",
+                "column_name": "smiles_after_defragmentation",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/test_manifest.json",
+                "output_filename": "step5_neutralized",
+                "explanation": "Step 5: Neutralization"
+            },
+            "module_name": "molml_mcp.tools.core_mol.cleaning"
+        },
+        {
+            "filename": "filtered_label_1",
+            "type_tag": "csv",
+            "explaination": "Keep only molecules with label=1",
+            "timestamp": "2025-12-08 16:07:59.940179",
+            "parent_function_name": "keep_from_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaning_test",
+                "column_name": "label",
+                "condition": "1",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/test_manifest.json",
+                "output_filename": "filtered_label_1",
+                "explanation": "Keep only molecules with label=1"
+            },
+            "module_name": "molml_mcp.tools.core.dataset_ops"
+        },
+        {
+            "filename": "test_binary_duplicates_1AE7B2E4.csv",
+            "type_tag": "csv",
+            "explaination": "Test dataset with binary labels and duplicates",
+            "timestamp": "2025-12-10 19:07:22.900450",
+            "parent_function_name": "<module>",
+            "parent_function_inputs": {},
+            "module_name": "__main__"
+        },
+        {
+            "filename": "inspected_binary_4C712E01.csv",
+            "type_tag": "csv",
+            "explaination": "Inspect binary label duplicates",
+            "timestamp": "2025-12-10 19:07:22.940900",
+            "parent_function_name": "inspect_duplicates_dataset",
+            "parent_function_inputs": {
+                "input_filename": "test_binary_duplicates_1AE7B2E4.csv",
+                "project_manifest_path": "tests/data/test_manifest.json",
+                "smiles_col": "SMILES",
+                "output_filename": "inspected_binary",
+                "explanation": "Inspect binary label duplicates",
+                "label_col": "activity",
+                "group_by_cols": null,
+                "is_binary_label": true,
+                "alpha": 0.05,
+                "cv_threshold": 0.3
+            },
+            "module_name": "molml_mcp.tools.cleaning.deduplication"
+        },
+        {
+            "filename": "test_continuous_duplicates_DF7C4279.csv",
+            "type_tag": "csv",
+            "explaination": "Test dataset with continuous labels and duplicates",
+            "timestamp": "2025-12-10 19:07:22.941866",
+            "parent_function_name": "<module>",
+            "parent_function_inputs": {},
+            "module_name": "__main__"
+        },
+        {
+            "filename": "inspected_continuous_AE01BC98.csv",
+            "type_tag": "csv",
+            "explaination": "Inspect continuous label duplicates",
+            "timestamp": "2025-12-10 19:07:22.972433",
+            "parent_function_name": "inspect_duplicates_dataset",
+            "parent_function_inputs": {
+                "input_filename": "test_continuous_duplicates_DF7C4279.csv",
+                "project_manifest_path": "tests/data/test_manifest.json",
+                "smiles_col": "SMILES",
+                "output_filename": "inspected_continuous",
+                "explanation": "Inspect continuous label duplicates",
+                "label_col": "IC50",
+                "group_by_cols": null,
+                "is_binary_label": false,
+                "alpha": 0.05,
+                "cv_threshold": 0.3
+            },
+            "module_name": "molml_mcp.tools.cleaning.deduplication"
+        },
+        {
+            "filename": "test_no_labels_5A5A73D6.csv",
+            "type_tag": "csv",
+            "explaination": "Test dataset without labels",
+            "timestamp": "2025-12-10 19:07:22.973429",
+            "parent_function_name": "<module>",
+            "parent_function_inputs": {},
+            "module_name": "__main__"
+        },
+        {
+            "filename": "inspected_no_labels_480DD800.csv",
+            "type_tag": "csv",
+            "explaination": "Structure deduplication without labels",
+            "timestamp": "2025-12-10 19:07:22.975712",
+            "parent_function_name": "inspect_duplicates_dataset",
+            "parent_function_inputs": {
+                "input_filename": "test_no_labels_5A5A73D6.csv",
+                "project_manifest_path": "tests/data/test_manifest.json",
+                "smiles_col": "SMILES",
+                "output_filename": "inspected_no_labels",
+                "explanation": "Structure deduplication without labels",
+                "label_col": null,
+                "group_by_cols": null,
+                "is_binary_label": true,
+                "alpha": 0.05,
+                "cv_threshold": 0.3
+            },
+            "module_name": "molml_mcp.tools.cleaning.deduplication"
+        },
+        {
+            "filename": "test_binary_dup_7BA11725.csv",
+            "type_tag": "csv",
+            "explaination": "Test binary",
+            "timestamp": "2025-12-10 19:08:11.287420",
+            "parent_function_name": "<module>",
+            "parent_function_inputs": {},
+            "module_name": "__main__"
+        },
+        {
+            "filename": "inspected_binary_v2_B8731115.csv",
+            "type_tag": "csv",
+            "explaination": "Inspect binary label duplicates",
+            "timestamp": "2025-12-10 19:08:11.320965",
+            "parent_function_name": "inspect_duplicates_dataset",
+            "parent_function_inputs": {
+                "input_filename": "test_binary_dup_7BA11725.csv",
+                "project_manifest_path": "tests/data/test_manifest.json",
+                "smiles_col": "SMILES",
+                "output_filename": "inspected_binary_v2",
+                "explanation": "Inspect binary label duplicates",
+                "label_col": "activity",
+                "group_by_cols": null,
+                "is_binary_label": true,
+                "alpha": 0.05,
+                "cv_threshold": 0.3
+            },
+            "module_name": "molml_mcp.tools.cleaning.deduplication"
+        },
+        {
+            "filename": "test_cont_dup_DD00BD3D.csv",
+            "type_tag": "csv",
+            "explaination": "Test continuous",
+            "timestamp": "2025-12-10 19:08:11.321893",
+            "parent_function_name": "<module>",
+            "parent_function_inputs": {},
+            "module_name": "__main__"
+        },
+        {
+            "filename": "inspected_continuous_v2_4C7082DC.csv",
+            "type_tag": "csv",
+            "explaination": "Inspect continuous label duplicates",
+            "timestamp": "2025-12-10 19:08:11.351541",
+            "parent_function_name": "inspect_duplicates_dataset",
+            "parent_function_inputs": {
+                "input_filename": "test_cont_dup_DD00BD3D.csv",
+                "project_manifest_path": "tests/data/test_manifest.json",
+                "smiles_col": "SMILES",
+                "output_filename": "inspected_continuous_v2",
+                "explanation": "Inspect continuous label duplicates",
+                "label_col": "IC50",
+                "group_by_cols": null,
+                "is_binary_label": false,
+                "alpha": 0.05,
+                "cv_threshold": 0.3
+            },
+            "module_name": "molml_mcp.tools.cleaning.deduplication"
+        }
+    ]
+}

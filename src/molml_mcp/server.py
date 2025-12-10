@@ -4,7 +4,7 @@ from mcp.server.fastmcp import FastMCP
 from molml_mcp.infrastructure.resources import get_all_resources_tools
 
 from molml_mcp.tools.core import get_all_dataset_tools
-from molml_mcp.tools.cleaning import get_all_cleaning_tools
+from molml_mcp.tools.cleaning import get_all_cleaning_tools, find_duplicates_dataset
 from molml_mcp.tools.core_mol import get_all_scaffold_tools
 from molml_mcp.tools.core_mol.visualize import smiles_to_acs1996_png, smiles_grid_to_acs1996_png
 from molml_mcp.tools.core_mol.smiles_ops import enumerate_stereo_isomers_smiles
@@ -28,6 +28,9 @@ for tool_func in get_all_dataset_tools():
 # Add molecular cleaning tools
 for tool_func in get_all_cleaning_tools():
     mcp.add_tool(tool_func)
+
+# Add deduplication tool
+mcp.add_tool(find_duplicates_dataset)
 
 # Add scaffold tools
 for tool_func in get_all_scaffold_tools():

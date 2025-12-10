@@ -1,0 +1,7 @@
+SMILES,mol_id,merge_strategy
+CCO,m1,drop
+CCO,m2,drop
+CCC,m3,unique
+CCCC,m4,drop
+CCCC,m5,drop
+CCCC,m6,drop

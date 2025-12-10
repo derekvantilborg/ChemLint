@@ -46,8 +46,10 @@ from .label_cleaning import (
     continuous_to_binary_labels_dataset,
 )
 
-# Deduplication exports (none yet, placeholder module)
-# from .deduplication import ...
+# Deduplication exports
+from .deduplication import (
+    find_duplicates_dataset,
+)
 
 __all__ = [
     # Molecular cleaning
@@ -83,4 +85,6 @@ __all__ = [
     "get_all_cleaning_tools",
     # Label cleaning
     "continuous_to_binary_labels_dataset",
+    # Deduplication
+    "find_duplicates_dataset",
 ]

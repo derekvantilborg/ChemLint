@@ -1,0 +1,8 @@
+SMILES,IC50,merge_strategy
+CCO,10.1,mean
+CCO,10.2,mean
+CCO,10.0,mean
+CCC,5.0,drop
+CCC,15.0,drop
+CCC,8.0,drop
+CCCC,7.5,unique

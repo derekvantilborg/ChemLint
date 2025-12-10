@@ -1,0 +1,8 @@
+SMILES,IC50,protein,merge_strategy
+CCO,10.1,A,mean
+CCO,10.2,A,mean
+CCO,10.0,A,mean
+CCC,5.0,A,drop
+CCC,15.0,A,drop
+CCC,8.0,A,drop
+CCCC,7.5,A,unique

@@ -5,7 +5,7 @@ from rdkit.DataStructs import ConvertToNumpyArray
 from molml_mcp.infrastructure.resources import _store_resource, _load_resource
 
 
-def smiles_to_ecfp(smiles: list[str], radius: int = 2, nbits: int = 2048) -> dict[str, np.ndarray]:
+def _smiles_to_ecfp(smiles: list[str], radius: int = 2, nbits: int = 2048) -> dict[str, np.ndarray]:
     """Generate ECFP (Morgan) fingerprints from SMILES strings.
     
     Args:
@@ -57,7 +57,7 @@ def smiles_to_ecfp_dataset(
     if smiles_column not in df.columns:
         raise ValueError(f"Column '{smiles_column}' not found in dataset.")
     
-    fingerprints = smiles_to_ecfp(df[smiles_column].tolist(), radius=radius, nbits=nbits)
+    fingerprints = _smiles_to_ecfp(df[smiles_column].tolist(), radius=radius, nbits=nbits)
 
     output_filename = _store_resource(fingerprints, project_manifest_path, output_filename, explanation, 'feature_vectors')
 
