@@ -3282,6 +3282,7 @@ def default_SMILES_standardization_pipeline_dataset(
         "n_rows": len(df_final),
         "columns": list(df_final.columns),
         "preview": df_final.head(5).to_dict(orient="records"),
+        "suggestions": "Check the comments_after_tautomer_canonicalization column for warnings of changes in stereochemistry. After standardization, drop invalid SMILES. In next steps, consider label curation and de-duplication. When working with experimental data, you might want to filter out PAINS molecules too.",
         "protocol_summary": {
             "stereo_policy": stereo_policy,
             "skip_isotope_removal": skip_isotope_removal,
