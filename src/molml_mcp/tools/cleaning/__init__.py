@@ -49,6 +49,7 @@ from .label_cleaning import (
 # Deduplication exports
 from .deduplication import (
     find_duplicates_dataset,
+    deduplicate_dataset,
 )
 
 __all__ = [
@@ -87,4 +88,5 @@ __all__ = [
     "continuous_to_binary_labels_dataset",
     # Deduplication
     "find_duplicates_dataset",
+    "deduplicate_dataset",
 ]

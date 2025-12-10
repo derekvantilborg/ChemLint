@@ -362,8 +362,8 @@ After running the full protocol:
 - Invalid molecules flagged for review
 
 For deduplication, use the final SMILES column to identify duplicates. It is 
-recommended to inspect_duplicates_dataset after standardization to make informed
-decisions on handling duplicates before actually deduplicating.
+recommended to find_duplicates_dataset and deduplicate_dataset after standardization 
+to make informed decisions on handling duplicates before actually deduplicating.
 
 ================================================================================
 END OF PROTOCOL

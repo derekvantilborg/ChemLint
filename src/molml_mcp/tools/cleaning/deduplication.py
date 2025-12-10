@@ -236,12 +236,9 @@ def find_duplicates_dataset(
     }
 
 
-
-
-
-# function that determined if entries with regression labels should be merged or dropped based on statistical analysis
-# - given a list of values (labels), determine if they can be merged (mean/median) or should be dropped due to high variability
 def _analyze_regression_conflicts(values: List[float]) -> str:
+    # function that determined if entries with regression labels should be merged or dropped based on statistical analysis
+    # - given a list of values (labels), determine if they can be merged (mean/median) or should be dropped due to high variability
     import numpy as np
 
     if len(values) <= 1:
@@ -431,48 +428,246 @@ def should_merge_continuous(values, cv_threshold=0.30, alpha=0.05):
         return 'drop', reason
 
 
-
-# def deduplicate_molecules_dataset(input_filename: str, project_manifest_path: str, output_filename: str,  explanation: str, smiles_col: str, strategy: str, 
-#                                   label_col: Optional[str] = None, group_by_cols: Optional[List[str]] = None) -> dict:
-#     """
-#     Remove duplicate entries from a dataset based on a specified molecule column. This should be a unique identifier for each molecule, 
-#     ideally after SMILES standardization.
-
-#     Dedeuplication can be performed using different strategies. In all cases, exact matches are merged. In cases of conflicting labels, the specified strategy is applied.
-
-#     Strategies:
-#     - 'random': Keep a random occurrence among conflicting labels.
-#     - 'drop': Remove all duplicate entries with conflicting labels.
-#     - 'max': For numeric labels, keep the maximum value among duplicates.
-#     - 'min': For numeric labels, keep the minimum value among duplicates.
-#     - 'mean': For numeric labels, average the values of duplicates.
-#     - 'median': For numeric labels, take the median of the values of duplicates.
-#     - 'mode': For categorical labels, take the most common value among duplicates. 
+def _execute_keep_first(group_df: pd.DataFrame, label_col: Optional[str]) -> pd.Series:
+    """Keep the first entry in a duplicate group."""
+    return group_df.iloc[0]
 
 
+def _execute_drop(group_df: pd.DataFrame, label_col: Optional[str]) -> Optional[pd.Series]:
+    """Drop all entries in a duplicate group (return None to signal removal)."""
+    return None
 
 
-#     **IT IS STRONGLY RECOMMENDED TO USE inspect_duplicates_dataset function FIRST TO REVIEW DUPLICATES BEFORE REMOVAL.**
+def _execute_majority_vote(group_df: pd.DataFrame, label_col: str) -> pd.Series:
+    """Keep first entry but use majority vote for the label."""
+    result = group_df.iloc[0].copy()
+    # Get valid (non-NaN) labels
+    valid_labels = group_df[label_col].dropna()
+    if len(valid_labels) > 0:
+        # Majority vote (mode)
+        majority_label = valid_labels.mode().iloc[0]
+        result[label_col] = majority_label
+    return result
 
+
+def _execute_mean(group_df: pd.DataFrame, label_col: str) -> pd.Series:
+    """Keep first entry but use mean for the label."""
+    result = group_df.iloc[0].copy()
+    # Get valid (non-NaN) labels
+    valid_labels = group_df[label_col].dropna()
+    if len(valid_labels) > 0:
+        mean_label = valid_labels.mean()
+        result[label_col] = mean_label
+    return result
+
+
+def _execute_median(group_df: pd.DataFrame, label_col: str) -> pd.Series:
+    """Keep first entry but use median for the label."""
+    result = group_df.iloc[0].copy()
+    # Get valid (non-NaN) labels
+    valid_labels = group_df[label_col].dropna()
+    if len(valid_labels) > 0:
+        median_label = valid_labels.median()
+        result[label_col] = median_label
+    return result
+
+
+def deduplicate_dataset(
+    input_filename: str,
+    project_manifest_path: str,
+    smiles_col: str,
+    output_filename: str,
+    explanation: str,
+    label_col: Optional[str] = None,
+    group_by_cols: Optional[List[str]] = None,
+    drop_all_duplicates: bool = False,
+) -> Dict[str, Any]:
+    """
+    Execute deduplication on a dataset with merge_strategy column from find_duplicates_dataset.
     
-#     """
-#     import pandas as pd
-
-#     df = _load_resource(project_manifest_path, input_filename)
-#     n_rows_before = len(df)
-
-#     if molecule_id_column not in df.columns:
-#         raise ValueError(f"Column {molecule_id_column} not found in dataset.")
+    This function reads a dataset annotated with merge strategies (typically from find_duplicates_dataset)
+    and executes the recommended merging operations. Each duplicate group is processed according to
+    its assigned strategy:
     
-#     # if no labels are present, just drop duplicates based on smiles_col and group_by_cols
-
-#     # else, drop exact duplicates first (based on smiles_col, label col, and group_by_cols if provided)
-
-#     # then, handle remaining duplicates based on strategy
-
-
-
-
-#     output_filename = _store_resource(df_deduplicated, project_manifest_path, output_filename, explanation, 'csv')
+    - 'unique': Keep as-is (single entry, no duplicates)
+    - 'keep_first': Keep the first entry in the group
+    - 'drop': Remove all entries in the group
+    - 'majority_vote': Keep first entry, use majority vote for binary label
+    - 'mean': Keep first entry, use mean for continuous label
+    - 'median': Keep first entry, use median for continuous label
     
+    **IMPORTANT**: This function expects the input dataset to have a 'merge_strategy' column created
+    by find_duplicates_dataset(). Run find_duplicates_dataset() first to inspect duplicates and get 
+    recommendations before executing deduplication.
+    
+    Parameters
+    ----------
+    input_filename : str
+        Name of the input dataset resource with 'merge_strategy' column
+        (e.g., output from find_duplicates_dataset)
+    project_manifest_path : str
+        Path to the project manifest.json file
+    smiles_col : str
+        Column name containing SMILES strings for duplicate detection
+    output_filename : str
+        Base name for output resource (will get unique ID appended)
+    explanation : str
+        Description of this deduplication operation for manifest
+    label_col : Optional[str], default=None
+        Column name containing labels. Required for strategies that aggregate labels
+        (majority_vote, mean, median). Can be None if no label aggregation needed
+    group_by_cols : Optional[List[str]], default=None
+        Additional columns to group by (must match what was used in find_duplicates_dataset).
+        E.g., ["protein_id"] to deduplicate within protein groups
+    drop_all_duplicates : bool, default=False
+        If True, override all merge strategy recommendations and drop all entries that are
+        not unique (i.e., drop all duplicate groups regardless of their merge_strategy).
+        Only entries marked as 'unique' will be kept. This is useful for strict deduplication
+        when you want to remove all ambiguous entries regardless of label agreement
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Summary containing:
+        - output_filename: Full name of deduplicated dataset resource
+        - n_rows_before: Number of rows before deduplication
+        - n_rows_after: Number of rows after deduplication
+        - n_rows_removed: Number of rows removed
+        - operations_summary: Dict with counts of each merge operation executed
+        - preview: First 5 rows of deduplicated dataset
+    """
+    # Load dataset
+    df = _load_resource(project_manifest_path, input_filename)
+    n_rows_before = len(df)
+    
+    # Validate merge_strategy column exists
+    if 'merge_strategy' not in df.columns:
+        raise ValueError(
+            f"Input dataset must have 'merge_strategy' column. "
+            f"Run find_duplicates_dataset() first to generate merge strategies. "
+            f"Available columns: {list(df.columns)}"
+        )
+    
+    # Validate required columns
+    if smiles_col not in df.columns:
+        raise ValueError(f"SMILES column '{smiles_col}' not found in dataset. Available columns: {list(df.columns)}")
+    
+    if label_col is not None and label_col not in df.columns:
+        raise ValueError(f"Label column '{label_col}' not found in dataset. Available columns: {list(df.columns)}")
+    
+    if group_by_cols is not None:
+        missing_cols = [col for col in group_by_cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"Group-by columns {missing_cols} not found in dataset. Available columns: {list(df.columns)}")
+    
+    # Prepare grouping columns
+    grouping_cols = [smiles_col]
+    if group_by_cols is not None:
+        grouping_cols.extend(group_by_cols)
+    
+    # Track operations
+    operations_summary = {
+        'unique': 0,
+        'keep_first': 0,
+        'drop': 0,
+        'majority_vote': 0,
+        'mean': 0,
+        'median': 0
+    }
+    
+    # Process groups and collect deduplicated rows
+    deduplicated_rows = []
+    
+    # Group by SMILES (and optional additional columns)
+    grouped = df.groupby(grouping_cols, dropna=False)
+    
+    for group_keys, group_df in grouped:
+        # Get the strategy for this group (all rows in group should have same strategy)
+        strategy = group_df['merge_strategy'].iloc[0]
+        
+        # Override: if drop_all_duplicates is True, drop everything except unique entries
+        if drop_all_duplicates and strategy != 'unique':
+            # Drop all duplicate entries
+            operations_summary['drop'] += 1
+            continue
+        
+        # Execute appropriate merge operation
+        if strategy == 'unique':
+            # Single entry, keep as-is
+            deduplicated_rows.append(group_df.iloc[0])
+            operations_summary['unique'] += 1
+            
+        elif strategy == 'keep_first':
+            # Keep first entry
+            result = _execute_keep_first(group_df, label_col)
+            deduplicated_rows.append(result)
+            operations_summary['keep_first'] += 1
+            
+        elif strategy == 'drop':
+            # Drop all entries in this group
+            result = _execute_drop(group_df, label_col)
+            if result is not None:
+                deduplicated_rows.append(result)
+            operations_summary['drop'] += 1
+            
+        elif strategy == 'majority_vote':
+            # Keep first entry, aggregate label with majority vote
+            if label_col is None:
+                raise ValueError(f"label_col required for majority_vote strategy in group {group_keys}")
+            result = _execute_majority_vote(group_df, label_col)
+            deduplicated_rows.append(result)
+            operations_summary['majority_vote'] += 1
+            
+        elif strategy == 'mean':
+            # Keep first entry, aggregate label with mean
+            if label_col is None:
+                raise ValueError(f"label_col required for mean strategy in group {group_keys}")
+            result = _execute_mean(group_df, label_col)
+            deduplicated_rows.append(result)
+            operations_summary['mean'] += 1
+            
+        elif strategy == 'median':
+            # Keep first entry, aggregate label with median
+            if label_col is None:
+                raise ValueError(f"label_col required for median strategy in group {group_keys}")
+            result = _execute_median(group_df, label_col)
+            deduplicated_rows.append(result)
+            operations_summary['median'] += 1
+            
+        else:
+            raise ValueError(f"Unknown merge strategy '{strategy}' in group {group_keys}")
+    
+    # Create deduplicated dataframe
+    df_deduplicated = pd.DataFrame(deduplicated_rows)
+    
+    # Remove merge_strategy and strategy_reason columns (they were for inspection only)
+    cols_to_drop = ['merge_strategy', 'strategy_reason']
+    cols_to_drop = [col for col in cols_to_drop if col in df_deduplicated.columns]
+    if cols_to_drop:
+        df_deduplicated = df_deduplicated.drop(columns=cols_to_drop)
+    
+    # Reset index
+    df_deduplicated = df_deduplicated.reset_index(drop=True)
+    
+    n_rows_after = len(df_deduplicated)
+    n_rows_removed = n_rows_before - n_rows_after
+    
+    # Store deduplicated dataset
+    output_id = _store_resource(
+        df_deduplicated,
+        project_manifest_path,
+        output_filename,
+        explanation,
+        'csv'
+    )
+    
+    # Return summary
+    return {
+        "output_filename": output_id,
+        "n_rows_before": n_rows_before,
+        "n_rows_after": n_rows_after,
+        "n_rows_removed": n_rows_removed,
+        "operations_summary": operations_summary,
+        "preview": df_deduplicated.head(5).to_dict('records'),
+    }
 
