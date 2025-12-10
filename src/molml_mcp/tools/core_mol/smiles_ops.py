@@ -660,4 +660,3 @@ def _validate_smiles(smi: str) -> tuple[str | None, str]:
         return None, "Failed: Empty molecule (0 atoms)"
 
     return smi, "Passed"
-
