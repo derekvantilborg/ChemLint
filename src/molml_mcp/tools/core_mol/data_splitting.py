@@ -111,7 +111,10 @@ def stratified_split_dataset(
     Split dataset while preserving label distribution (stratified split).
     
     Auto-detects classification vs regression. For regression, bins continuous
-    values before stratifying. Ensures each split has similar label distributions.
+    values before stratifying. Ensures each split has similar label distributions. 
+
+    This function could also be used to balance based on a molecular property
+    (e.g., molecular weight) by specifying that property column as label_column.
     """
     from sklearn.model_selection import train_test_split
     
