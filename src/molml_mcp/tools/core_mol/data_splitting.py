@@ -93,6 +93,114 @@ def random_split_dataset(
     return result
 
 
+def stratified_split_dataset(
+    input_filename: str,
+    label_column: str,
+    project_manifest_path: str,
+    train_output_filename: str,
+    test_output_filename: str,
+    val_output_filename: str | None = None,
+    explanation: str = "Stratified dataset split",
+    train_ratio: float = 0.8,
+    test_ratio: float = 0.2,
+    val_ratio: float = 0.0,
+    n_bins: int = 5,
+    random_state: int = 42
+) -> dict:
+    """
+    Split dataset while preserving label distribution (stratified split).
+    
+    Auto-detects classification vs regression. For regression, bins continuous
+    values before stratifying. Ensures each split has similar label distributions.
+    """
+    from sklearn.model_selection import train_test_split
+    
+    df = _load_resource(project_manifest_path, input_filename)
+    
+    # Validate
+    if abs(train_ratio + test_ratio + val_ratio - 1.0) > 1e-6:
+        raise ValueError(f"Ratios must sum to 1.0, got {train_ratio + test_ratio + val_ratio:.6f}")
+    if label_column not in df.columns:
+        raise ValueError(f"Label column '{label_column}' not found. Available: {list(df.columns)}")
+    if df[label_column].isna().sum() > 0:
+        raise ValueError(f"Found {df[label_column].isna().sum()} missing values in '{label_column}'")
+    
+    labels = df[label_column]
+    
+    # Auto-detect: classification vs regression
+    is_regression = False
+    bin_edges = None
+    
+    if pd.api.types.is_numeric_dtype(labels):
+        n_unique = labels.nunique()
+        is_integers = (labels % 1 == 0).all()
+        
+        if is_integers and n_unique < 20:
+            # Few unique integers → classification
+            stratify = labels.astype(str)
+        else:
+            # Many values → regression (bin it)
+            is_regression = True
+            n_bins_adj = max(2, min(n_bins, n_unique // 5))
+            try:
+                stratify, bin_edges = pd.qcut(labels, q=n_bins_adj, labels=False, retbins=True, duplicates='drop')
+            except ValueError:
+                stratify, bin_edges = pd.cut(labels, bins=n_bins_adj, labels=False, retbins=True)
+    else:
+        # Non-numeric → classification
+        stratify = labels.astype(str)
+    
+    # Check minimum samples
+    n_splits = 2 if val_ratio == 0 else 3
+    if stratify.value_counts().min() < n_splits:
+        raise ValueError(f"Smallest class has {stratify.value_counts().min()} samples, need at least {n_splits}")
+    
+    # Split
+    df_train_val, df_test = train_test_split(df, test_size=test_ratio, stratify=stratify, random_state=random_state)
+    
+    if val_ratio > 0:
+        val_size = val_ratio / (train_ratio + val_ratio)
+        df_train, df_val = train_test_split(
+            df_train_val, 
+            test_size=val_size, 
+            stratify=stratify.loc[df_train_val.index], 
+            random_state=random_state
+        )
+    else:
+        df_train, df_val = df_train_val, pd.DataFrame()
+    
+    # Get distributions
+    def get_dist(split_df):
+        if len(split_df) == 0:
+            return {}
+        if is_regression:
+            dist = stratify.loc[split_df.index].value_counts(normalize=True).sort_index()
+            return {f"bin_{k}": f"{v*100:.1f}%" for k, v in dist.items()}
+        else:
+            dist = split_df[label_column].value_counts(normalize=True)
+            return {str(k): f"{v*100:.1f}%" for k, v in dist.items()}
+    
+    # Store
+    train_out = _store_resource(df_train, project_manifest_path, train_output_filename, explanation, "csv")
+    test_out = _store_resource(df_test, project_manifest_path, test_output_filename, explanation, "csv")
+    val_out = _store_resource(df_val, project_manifest_path, val_output_filename, explanation, "csv") if val_ratio > 0 else None
+    
+    return {
+        "train_output_filename": train_out,
+        "test_output_filename": test_out,
+        "val_output_filename": val_out,
+        "n_train_rows": len(df_train),
+        "n_test_rows": len(df_test),
+        "n_val_rows": len(df_val),
+        "train_label_distribution": get_dist(df_train),
+        "test_label_distribution": get_dist(df_test),
+        "val_label_distribution": get_dist(df_val),
+        "is_regression": is_regression,
+        "bin_edges": bin_edges.tolist() if bin_edges is not None else None,
+        "note": f"Stratified split: {len(df)}→ train:{len(df_train)}, test:{len(df_test)}" + (f", val:{len(df_val)}" if val_ratio > 0 else "")
+    }
+
+
 def scaffold_split_dataset(
     input_filename: str,
     scaffold_column: str,
