@@ -3,7 +3,13 @@ from mcp.server.fastmcp import FastMCP
 # All tools we want to expose via the MCP server
 from molml_mcp.infrastructure.resources import get_all_resources_tools
 
-from molml_mcp.tools.core import get_all_dataset_tools
+from molml_mcp.tools.core import (
+    get_all_dataset_tools,
+    filter_by_property_range,
+    filter_by_lipinski_ro5,
+    filter_by_veber_rules,
+    filter_by_pains
+)
 from molml_mcp.tools.cleaning import get_all_cleaning_tools, find_duplicates_dataset, deduplicate_dataset
 from molml_mcp.tools.core_mol import get_all_scaffold_tools
 from molml_mcp.tools.core_mol.visualize import smiles_to_acs1996_png, smiles_grid_to_acs1996_png
@@ -29,6 +35,12 @@ for tool_func in get_all_resources_tools():
 # Add dataset management tools
 for tool_func in get_all_dataset_tools():
     mcp.add_tool(tool_func)
+
+# Add filtering tools
+mcp.add_tool(filter_by_property_range)
+mcp.add_tool(filter_by_lipinski_ro5)
+mcp.add_tool(filter_by_veber_rules)
+mcp.add_tool(filter_by_pains)
 
 # Add molecular cleaning tools
 for tool_func in get_all_cleaning_tools():

@@ -11,6 +11,12 @@ from molml_mcp.tools.core.dataset_ops import (
     keep_from_dataset,
     get_all_dataset_tools,
 )
+from molml_mcp.tools.core.filtering import (
+    filter_by_property_range,
+    filter_by_lipinski_ro5,
+    filter_by_veber_rules,
+    filter_by_pains
+)
 
 __all__ = [
     'store_csv_as_dataset',
@@ -22,4 +28,8 @@ __all__ = [
     'drop_from_dataset',
     'keep_from_dataset',
     'get_all_dataset_tools',
+    'filter_by_property_range',
+    'filter_by_lipinski_ro5',
+    'filter_by_veber_rules',
+    'filter_by_pains',
 ]
