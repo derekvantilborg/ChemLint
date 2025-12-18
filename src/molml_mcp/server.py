@@ -8,7 +8,10 @@ from molml_mcp.tools.core import (
     filter_by_property_range,
     filter_by_lipinski_ro5,
     filter_by_veber_rules,
-    filter_by_pains
+    filter_by_pains,
+    filter_by_lead_likeness,
+    filter_by_rule_of_three,
+    filter_by_qed
 )
 from molml_mcp.tools.cleaning import get_all_cleaning_tools, find_duplicates_dataset, deduplicate_dataset
 from molml_mcp.tools.core_mol import get_all_scaffold_tools
@@ -41,6 +44,9 @@ mcp.add_tool(filter_by_property_range)
 mcp.add_tool(filter_by_lipinski_ro5)
 mcp.add_tool(filter_by_veber_rules)
 mcp.add_tool(filter_by_pains)
+mcp.add_tool(filter_by_lead_likeness)
+mcp.add_tool(filter_by_rule_of_three)
+mcp.add_tool(filter_by_qed)
 
 # Add molecular cleaning tools
 for tool_func in get_all_cleaning_tools():

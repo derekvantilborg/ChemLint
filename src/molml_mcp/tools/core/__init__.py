@@ -15,7 +15,10 @@ from molml_mcp.tools.core.filtering import (
     filter_by_property_range,
     filter_by_lipinski_ro5,
     filter_by_veber_rules,
-    filter_by_pains
+    filter_by_pains,
+    filter_by_lead_likeness,
+    filter_by_rule_of_three,
+    filter_by_qed
 )
 
 __all__ = [
@@ -32,4 +35,7 @@ __all__ = [
     'filter_by_lipinski_ro5',
     'filter_by_veber_rules',
     'filter_by_pains',
+    'filter_by_lead_likeness',
+    'filter_by_rule_of_three',
+    'filter_by_qed',
 ]
