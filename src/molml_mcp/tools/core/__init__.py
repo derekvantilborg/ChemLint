@@ -18,7 +18,9 @@ from molml_mcp.tools.core.filtering import (
     filter_by_pains,
     filter_by_lead_likeness,
     filter_by_rule_of_three,
-    filter_by_qed
+    filter_by_qed,
+    filter_by_scaffold,
+    filter_by_functional_groups
 )
 
 __all__ = [
@@ -38,4 +40,6 @@ __all__ = [
     'filter_by_lead_likeness',
     'filter_by_rule_of_three',
     'filter_by_qed',
+    'filter_by_scaffold',
+    'filter_by_functional_groups',
 ]

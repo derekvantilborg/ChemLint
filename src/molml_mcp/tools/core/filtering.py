@@ -1,10 +1,13 @@
 """
 Dataset filtering tools for property-based selection.
 """
+import pandas as pd
 from rdkit.Chem import Descriptors, Lipinski
 from rdkit import Chem
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 from molml_mcp.tools.core_mol.pains import _check_smiles_for_pains
+from molml_mcp.tools.core_mol.scaffolds import _get_scaffold
+from molml_mcp.tools.core_mol.substructure_matching import find_functional_group_patterns_in_smiles
 
 
 def filter_by_property_range(
@@ -1146,4 +1149,455 @@ def filter_by_qed(
             f"Threshold: QED ≥ {min_qed}. "
             f"Filtered set: mean QED = {mean_qed:.3f}, median QED = {median_qed:.3f}."
         )
+    }
+
+
+def filter_by_scaffold(
+    input_filename: str,
+    project_manifest_path: str,
+    output_filename: str,
+    scaffold_smiles_list: list[str],
+    explanation: str = "Filter by scaffold",
+    action: str = 'keep',
+    smiles_column: str = 'smiles'
+) -> dict:
+    """
+    Filter dataset by Bemis-Murcko scaffold membership.
+    
+    Filters molecules based on whether their Bemis-Murcko scaffold matches any scaffold
+    in the provided list. If the dataset already has a 'scaffold_bemis_murcko' column,
+    it will be used. Otherwise, scaffolds will be calculated on-the-fly from SMILES.
+    
+    Parameters
+    ----------
+    input_filename : str
+        Filename of the input dataset.
+    project_manifest_path : str
+        Path to the project's manifest.json file.
+    output_filename : str
+        Base name for the output filtered dataset.
+    scaffold_smiles_list : list[str]
+        List of scaffold SMILES to filter by. Molecules matching any scaffold will be kept/dropped.
+    explanation : str, default='Filter by scaffold'
+        Description of this filtering operation.
+    action : str, default='keep'
+        Filter action: 'keep' retains molecules matching scaffolds, 'drop' removes them.
+    smiles_column : str, default='smiles'
+        Name of column containing SMILES strings (only used if scaffold column doesn't exist).
+    
+    Returns
+    -------
+    dict
+        Contains output_filename, n_input, n_output, n_removed, n_matching_scaffold,
+        n_invalid_smiles, n_no_scaffold, percent_retained, action, scaffolds_used,
+        scaffold_column_existed, columns, and note.
+    
+    Examples
+    --------
+    Keep only molecules with specific scaffolds:
+    
+        result = filter_by_scaffold(
+            input_filename='molecules_AB12CD34.csv',
+            project_manifest_path='/path/to/manifest.json',
+            output_filename='benzene_scaffolds',
+            scaffold_smiles_list=['c1ccccc1'],  # Benzene scaffold
+            action='keep'
+        )
+        
+        print(f"Kept {result['n_matching_scaffold']} molecules with benzene scaffold")
+    
+    Remove molecules with unwanted scaffolds:
+    
+        result = filter_by_scaffold(
+            input_filename='molecules_AB12CD34.csv',
+            project_manifest_path='/path/to/manifest.json',
+            output_filename='no_pyridine',
+            scaffold_smiles_list=['c1ccncc1'],  # Pyridine scaffold
+            explanation='Remove pyridine-containing molecules',
+            action='drop'
+        )
+    
+    Filter by multiple scaffolds:
+    
+        result = filter_by_scaffold(
+            input_filename='molecules_AB12CD34.csv',
+            project_manifest_path='/path/to/manifest.json',
+            output_filename='aromatic_cores',
+            scaffold_smiles_list=[
+                'c1ccccc1',           # Benzene
+                'c1ccc2ccccc2c1',     # Naphthalene
+                'c1ccc2cc3ccccc3cc2c1'  # Anthracene
+            ],
+            explanation='Keep molecules with aromatic scaffolds',
+            action='keep'
+        )
+    """
+    # Load dataset
+    df = _load_resource(project_manifest_path, input_filename)
+    n_input = len(df)
+    
+    # Validate action
+    if action not in ['keep', 'drop']:
+        raise ValueError(
+            f"Invalid action '{action}'. Must be 'keep' (retain matching) or 'drop' (remove matching)."
+        )
+    
+    # Validate scaffold list
+    if not scaffold_smiles_list:
+        raise ValueError("scaffold_smiles_list cannot be empty. Provide at least one scaffold SMILES.")
+    
+    # Canonicalize scaffold SMILES for comparison
+    canonical_scaffolds = set()
+    invalid_scaffolds = []
+    
+    for scaffold_smi in scaffold_smiles_list:
+        mol = Chem.MolFromSmiles(scaffold_smi)
+        if mol is not None:
+            canonical_smi = Chem.MolToSmiles(mol)
+            canonical_scaffolds.add(canonical_smi)
+        else:
+            invalid_scaffolds.append(scaffold_smi)
+    
+    if invalid_scaffolds:
+        raise ValueError(
+            f"Invalid scaffold SMILES provided: {invalid_scaffolds}. "
+            f"All scaffolds must be valid SMILES strings."
+        )
+    
+    if not canonical_scaffolds:
+        raise ValueError("No valid scaffolds provided after canonicalization.")
+    
+    # Check if scaffold column already exists
+    scaffold_column_existed = 'scaffold_bemis_murcko' in df.columns
+    
+    df_with_scaffold = df.copy()
+    
+    if not scaffold_column_existed:
+        # Need to calculate scaffolds from SMILES
+        if smiles_column not in df.columns:
+            available_columns = df.columns.tolist()
+            raise ValueError(
+                f"SMILES column '{smiles_column}' not found and no 'scaffold_bemis_murcko' column exists. "
+                f"Available columns: {available_columns}"
+            )
+        
+        # Calculate Bemis-Murcko scaffolds on-the-fly
+        scaffold_list = []
+        valid_mask = []
+        
+        for smiles in df_with_scaffold[smiles_column]:
+            scaffold_smi, comment = _get_scaffold(smiles, scaffold_type='bemis_murcko')
+            if scaffold_smi is None:
+                scaffold_list.append(None)
+                # Check if it's a valid SMILES but no scaffold vs invalid SMILES
+                if comment.startswith('Failed: Invalid'):
+                    valid_mask.append(False)
+                else:
+                    valid_mask.append(True)  # Valid SMILES but no scaffold
+            else:
+                scaffold_list.append(scaffold_smi)
+                valid_mask.append(True)
+        
+        df_with_scaffold['scaffold_bemis_murcko'] = scaffold_list
+        n_invalid = sum(1 for v in valid_mask if not v)
+        n_no_scaffold = sum(1 for s in scaffold_list if s is None and valid_mask[scaffold_list.index(s)])
+    else:
+        # Use existing scaffold column
+        n_invalid = 0
+        n_no_scaffold = sum(1 for s in df_with_scaffold['scaffold_bemis_murcko'] if pd.isna(s) or s == 'No scaffold' or s == '')
+    
+    # Filter by scaffold membership
+    def matches_scaffold(scaffold_smi):
+        if pd.isna(scaffold_smi) or scaffold_smi == 'No scaffold' or scaffold_smi == '' or scaffold_smi is None:
+            return False
+        return scaffold_smi in canonical_scaffolds
+    
+    df_with_scaffold['_matches_scaffold'] = df_with_scaffold['scaffold_bemis_murcko'].apply(matches_scaffold)
+    
+    n_matching = df_with_scaffold['_matches_scaffold'].sum()
+    
+    # Apply filter based on action
+    if action == 'keep':
+        df_filtered = df_with_scaffold[df_with_scaffold['_matches_scaffold']].copy()
+    else:  # action == 'drop'
+        df_filtered = df_with_scaffold[~df_with_scaffold['_matches_scaffold']].copy()
+    
+    # Drop temporary column
+    df_filtered = df_filtered.drop(columns=['_matches_scaffold'])
+    
+    n_output = len(df_filtered)
+    n_removed = n_input - n_output
+    percent_retained = (n_output / n_input * 100) if n_input > 0 else 0.0
+    
+    # Store output
+    output_filename_stored = _store_resource(
+        df_filtered,
+        project_manifest_path,
+        output_filename,
+        explanation,
+        'csv'
+    )
+    
+    if action == 'keep':
+        note_text = (
+            f"Scaffold filtering (keep): {n_input} → {n_output} molecules ({percent_retained:.1f}% retained). "
+            f"Kept {n_matching} molecules matching {len(canonical_scaffolds)} scaffold(s). "
+        )
+    else:
+        note_text = (
+            f"Scaffold filtering (drop): {n_input} → {n_output} molecules ({percent_retained:.1f}% retained). "
+            f"Removed {n_matching} molecules matching {len(canonical_scaffolds)} scaffold(s). "
+        )
+    
+    if not scaffold_column_existed:
+        note_text += f"Calculated scaffolds on-the-fly. {n_invalid} invalid SMILES, {n_no_scaffold} molecules with no scaffold."
+    else:
+        note_text += f"Used existing scaffold column. {n_no_scaffold} molecules with no scaffold."
+    
+    return {
+        "output_filename": output_filename_stored,
+        "n_input": n_input,
+        "n_output": n_output,
+        "n_removed": n_removed,
+        "n_matching_scaffold": int(n_matching),
+        "n_invalid_smiles": n_invalid,
+        "n_no_scaffold": n_no_scaffold,
+        "percent_retained": percent_retained,
+        "action": action,
+        "scaffolds_used": list(canonical_scaffolds),
+        "scaffold_column_existed": scaffold_column_existed,
+        "columns": df_filtered.columns.tolist(),
+        "warning": "⚠️ Scaffold filtering is a crude structural filter. Molecules with the same scaffold can have vastly different properties. Use with caution.",
+        "note": note_text
+    }
+
+
+def filter_by_functional_groups(
+    input_filename: str,
+    smiles_column: str,
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = "Filter by functional groups",
+    required: list[str] | None = None,
+    forbidden: list[str] | None = None
+) -> dict:
+    """
+    Filter dataset by presence/absence of functional groups.
+    
+    Uses functional group pattern matching to filter molecules based on required and/or
+    forbidden functional groups. Molecules must contain ALL required groups and NONE of
+    the forbidden groups to pass the filter.
+    
+    Detects 58 functional group patterns including:
+    - Carbonyls: Carbonyl group, Aldehyde, Ketone, Ester, Amide, Carboxylic acid
+    - Nitrogen groups: Primary/Secondary/Tertiary amine, Amide, Urea, Guanidine, Nitro
+    - Oxygen groups: Hydroxyl, Ether, Ester, Epoxide
+    - Sulfur groups: Thiol, Sulfide, Sulfone, Sulfonamide
+    - Aromatics: Benzene ring, Pyridine, Imidazole, Furan, Thiophene
+    - Halogens: Fluorine, Chlorine, Bromine, Iodine
+    - And many more...
+    
+    Parameters
+    ----------
+    input_filename : str
+        Filename of the input dataset.
+    smiles_column : str
+        Name of the column containing SMILES strings.
+    project_manifest_path : str
+        Path to the project's manifest.json file.
+    output_filename : str
+        Base name for the output filtered dataset.
+    explanation : str, default='Filter by functional groups'
+        Description of this filtering operation.
+    required : list[str] or None, default=None
+        List of functional group names that MUST be present (AND logic).
+        If None or empty, no required groups constraint.
+    forbidden : list[str] or None, default=None
+        List of functional group names that MUST NOT be present (AND logic).
+        If None or empty, no forbidden groups constraint.
+    
+    Returns
+    -------
+    dict
+        Contains output_filename, n_input, n_output, n_removed, n_invalid_smiles,
+        percent_retained, required_groups, forbidden_groups, filter_summary,
+        columns, and note.
+    
+    Examples
+    --------
+    Filter for molecules with carboxylic acids but no amines:
+    
+        result = filter_by_functional_groups(
+            input_filename='molecules_AB12CD34.csv',
+            smiles_column='smiles',
+            project_manifest_path='/path/to/manifest.json',
+            output_filename='acids_no_amines',
+            explanation='Carboxylic acids without amine groups',
+            required=['Carboxylic acid'],
+            forbidden=['Primary amine', 'Secondary amine', 'Tertiary amine']
+        )
+        
+        print(f"Kept {result['n_output']} molecules with required groups")
+    
+    Filter for molecules with both hydroxyl and carbonyl:
+    
+        result = filter_by_functional_groups(
+            input_filename='molecules_AB12CD34.csv',
+            smiles_column='smiles',
+            project_manifest_path='/path/to/manifest.json',
+            output_filename='hydroxyl_carbonyl',
+            required=['Hydroxyl', 'Carbonyl group'],
+            forbidden=None
+        )
+    
+    Filter out halogenated compounds:
+    
+        result = filter_by_functional_groups(
+            input_filename='molecules_AB12CD34.csv',
+            smiles_column='smiles',
+            project_manifest_path='/path/to/manifest.json',
+            output_filename='no_halogens',
+            required=None,
+            forbidden=['Fluorine', 'Chlorine', 'Bromine', 'Iodine']
+        )
+    """
+    # Load dataset
+    df = _load_resource(project_manifest_path, input_filename)
+    n_input = len(df)
+    
+    # Validate SMILES column exists
+    if smiles_column not in df.columns:
+        available_columns = df.columns.tolist()
+        raise ValueError(
+            f"SMILES column '{smiles_column}' not found in dataset. "
+            f"Available columns: {available_columns}"
+        )
+    
+    # Validate inputs
+    if required is None:
+        required = []
+    if forbidden is None:
+        forbidden = []
+    
+    if not required and not forbidden:
+        raise ValueError(
+            "At least one of 'required' or 'forbidden' must be specified. "
+            "Both cannot be None/empty."
+        )
+    
+    # Detect functional groups for each molecule
+    df_with_groups = df.copy()
+    functional_groups_list = []
+    valid_mask = []
+    
+    for smiles in df_with_groups[smiles_column]:
+        if pd.isna(smiles) or smiles == '' or smiles is None:
+            functional_groups_list.append(set())
+            valid_mask.append(False)
+        else:
+            groups_str = find_functional_group_patterns_in_smiles(smiles)
+            if groups_str:
+                # Parse comma-separated groups into set
+                groups_set = set(g.strip() for g in groups_str.split(','))
+                functional_groups_list.append(groups_set)
+                valid_mask.append(True)
+            else:
+                # Valid SMILES but no functional groups detected
+                functional_groups_list.append(set())
+                valid_mask.append(True)
+    
+    df_with_groups['_functional_groups'] = functional_groups_list
+    df_with_groups['_valid'] = valid_mask
+    
+    # Count invalid SMILES
+    n_invalid = sum(1 for v in valid_mask if not v)
+    
+    # Apply filtering logic
+    def passes_filter(groups_set):
+        # Check required groups (must have ALL)
+        if required:
+            has_all_required = all(req in groups_set for req in required)
+            if not has_all_required:
+                return False
+        
+        # Check forbidden groups (must have NONE)
+        if forbidden:
+            has_any_forbidden = any(forb in groups_set for forb in forbidden)
+            if has_any_forbidden:
+                return False
+        
+        return True
+    
+    # Filter only valid molecules, then apply functional group filter
+    df_valid = df_with_groups[df_with_groups['_valid']].copy()
+    df_valid['_passes'] = df_valid['_functional_groups'].apply(passes_filter)
+    df_filtered = df_valid[df_valid['_passes']].copy()
+    
+    # Drop temporary columns
+    df_filtered = df_filtered.drop(columns=['_functional_groups', '_valid', '_passes'])
+    
+    n_output = len(df_filtered)
+    n_removed = n_input - n_output
+    percent_retained = (n_output / n_input * 100) if n_input > 0 else 0.0
+    
+    # Calculate filter statistics
+    n_failed_required = 0
+    n_failed_forbidden = 0
+    
+    if required:
+        for groups_set in df_valid['_functional_groups']:
+            if not all(req in groups_set for req in required):
+                n_failed_required += 1
+    
+    if forbidden:
+        for groups_set in df_valid['_functional_groups']:
+            if any(forb in groups_set for forb in forbidden):
+                n_failed_forbidden += 1
+    
+    # Store output
+    output_filename_stored = _store_resource(
+        df_filtered,
+        project_manifest_path,
+        output_filename,
+        explanation,
+        'csv'
+    )
+    
+    # Build filter summary
+    filter_parts = []
+    if required:
+        filter_parts.append(f"Required: {', '.join(required)}")
+    if forbidden:
+        filter_parts.append(f"Forbidden: {', '.join(forbidden)}")
+    filter_summary = " | ".join(filter_parts)
+    
+    note_text = (
+        f"Functional group filtering: {n_input} → {n_output} molecules ({percent_retained:.1f}% retained). "
+    )
+    
+    if required:
+        note_text += f"Required ALL of {len(required)} group(s). "
+    if forbidden:
+        note_text += f"Forbidden ANY of {len(forbidden)} group(s). "
+    
+    note_text += f"Removed {n_invalid} invalid SMILES. "
+    
+    if required and n_failed_required > 0:
+        note_text += f"{n_failed_required} failed required groups. "
+    if forbidden and n_failed_forbidden > 0:
+        note_text += f"{n_failed_forbidden} failed forbidden groups."
+    
+    return {
+        "output_filename": output_filename_stored,
+        "n_input": n_input,
+        "n_output": n_output,
+        "n_removed": n_removed,
+        "n_invalid_smiles": n_invalid,
+        "percent_retained": percent_retained,
+        "required_groups": required if required else [],
+        "forbidden_groups": forbidden if forbidden else [],
+        "filter_summary": filter_summary,
+        "columns": df_filtered.columns.tolist(),
+        "warning": "⚠️ Functional group detection uses SMARTS patterns which may have false positives/negatives. Manual validation recommended for critical applications.",
+        "note": note_text
     }

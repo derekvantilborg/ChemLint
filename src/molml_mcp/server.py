@@ -11,7 +11,9 @@ from molml_mcp.tools.core import (
     filter_by_pains,
     filter_by_lead_likeness,
     filter_by_rule_of_three,
-    filter_by_qed
+    filter_by_qed,
+    filter_by_scaffold,
+    filter_by_functional_groups
 )
 from molml_mcp.tools.cleaning import get_all_cleaning_tools, find_duplicates_dataset, deduplicate_dataset
 from molml_mcp.tools.core_mol import get_all_scaffold_tools
@@ -47,6 +49,8 @@ mcp.add_tool(filter_by_pains)
 mcp.add_tool(filter_by_lead_likeness)
 mcp.add_tool(filter_by_rule_of_three)
 mcp.add_tool(filter_by_qed)
+mcp.add_tool(filter_by_scaffold)
+mcp.add_tool(filter_by_functional_groups)
 
 # Add molecular cleaning tools
 for tool_func in get_all_cleaning_tools():
