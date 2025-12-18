@@ -300,13 +300,23 @@ def _short_explanation(name: str) -> str:
             return PREFIX_EXPLANATIONS[prefix]
     return PREFIX_EXPLANATIONS[""]
 
-PAINS_DICT = {
-    name: {
-        "pattern": smarts,
-        "explanation": _short_explanation(name.split("(")[0])  # strip the "(14)" counts etc
-    }
-    for name, smarts in get_pains_smarts().items()
-}
+# Pre-compile PAINS patterns for performance (avoid recompiling 480 patterns per molecule)
+_PAINS_PATTERNS_CACHE = None
+
+def _get_compiled_pains_patterns():
+    """Get pre-compiled PAINS patterns (cached for performance)."""
+    global _PAINS_PATTERNS_CACHE
+    if _PAINS_PATTERNS_CACHE is None:
+        from rdkit.Chem import MolFromSmarts
+        _PAINS_PATTERNS_CACHE = {}
+        for name, smarts in get_pains_smarts().items():
+            pattern = MolFromSmarts(smarts, mergeHs=True)
+            if pattern is not None:  # Skip invalid patterns
+                _PAINS_PATTERNS_CACHE[name] = {
+                    "pattern": pattern,
+                    "explanation": _short_explanation(name.split("(")[0])
+                }
+    return _PAINS_PATTERNS_CACHE
 
 
 def _check_smiles_for_pains(smiles: str) -> str:
@@ -351,18 +361,21 @@ def _check_smiles_for_pains(smiles: str) -> str:
     
     try:
         matched_patterns = []
-        for name, info in PAINS_DICT.items():
-            pattern = info["pattern"]
+        pains_dict = _get_compiled_pains_patterns()
+        
+        for name, info in pains_dict.items():
+            compiled_pattern = info["pattern"]
             description = info["explanation"]
 
-            if _mol_has_pattern(mol, pattern):
+            # Use pre-compiled pattern directly (much faster than _mol_has_pattern)
+            if mol.HasSubstructMatch(compiled_pattern):
                 matched_patterns.append(description)
 
         if not matched_patterns:
             return "Passed"
 
-        return 'PAINS: ' + ','.join(matched_patterns)
+        return 'PAINS: ' + ', '.join(matched_patterns)
     
     except Exception as e:
-        return None, f"Failed: {str(e)}"
+        return f"Failed: {str(e)}"
 
