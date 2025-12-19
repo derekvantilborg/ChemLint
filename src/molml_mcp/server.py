@@ -20,7 +20,7 @@ from molml_mcp.tools.core_mol import get_all_scaffold_tools
 from molml_mcp.tools.core_mol.visualize import smiles_to_acs1996_png, smiles_grid_to_acs1996_png
 from molml_mcp.tools.core_mol.smiles_ops import enumerate_stereo_isomers_smiles
 from molml_mcp.tools.core_mol.substructure_matching import get_all_substructure_matching_tools
-from molml_mcp.tools.core_mol.data_splitting import random_split_dataset, scaffold_split_dataset, stratified_split_dataset
+from molml_mcp.tools.core_mol.data_splitting import random_split_dataset, scaffold_split_dataset, stratified_split_dataset, cluster_based_split_dataset
 from molml_mcp.tools.core_mol.similarity import (
     compute_similarity_matrix,
     find_k_nearest_neighbors,
@@ -85,6 +85,7 @@ mcp.add_tool(smiles_grid_to_acs1996_png)
 mcp.add_tool(random_split_dataset)
 mcp.add_tool(scaffold_split_dataset)
 mcp.add_tool(stratified_split_dataset)
+mcp.add_tool(cluster_based_split_dataset)
 
 # Add similarity tools
 mcp.add_tool(compute_similarity_matrix)
@@ -95,4 +96,8 @@ mcp.add_tool(add_similarity_statistics_dataset)
 from molml_mcp.tools.clustering.clust import get_all_clustering_tools
 for tool_func in get_all_clustering_tools():
     mcp.add_tool(tool_func)
+
+# Add plotting tools
+from molml_mcp.tools.plotting import plot_histogram
+mcp.add_tool(plot_histogram)
 
