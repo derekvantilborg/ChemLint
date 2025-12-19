@@ -22,6 +22,10 @@ from molml_mcp.tools.core.filtering import (
     filter_by_scaffold,
     filter_by_functional_groups
 )
+from molml_mcp.tools.core.dim_reduction import (
+    reduce_dimensions_pca,
+    reduce_dimensions_tsne,
+)
 
 __all__ = [
     'store_csv_as_dataset',
@@ -42,4 +46,6 @@ __all__ = [
     'filter_by_qed',
     'filter_by_scaffold',
     'filter_by_functional_groups',
+    'reduce_dimensions_pca',
+    'reduce_dimensions_tsne',
 ]
