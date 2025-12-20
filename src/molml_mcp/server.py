@@ -31,6 +31,7 @@ from molml_mcp.tools.core_mol.similarity import (
 
 from molml_mcp.tools.featurization.simple_descriptors import list_rdkit_descriptors, calculate_simple_descriptors
 from molml_mcp.tools.featurization.complex_descriptors import get_all_complex_descriptor_tools
+from molml_mcp.tools.ml import get_all_ml_tools
 
 # create an MCP server 
 mcp = FastMCP("molml-mcp") 
@@ -107,4 +108,8 @@ for tool_func in get_all_clustering_tools():
 from molml_mcp.tools.core.plotting import plot_histogram, plot_scatter
 mcp.add_tool(plot_histogram)
 mcp.add_tool(plot_scatter)
+
+# Add ML metrics tools
+for tool_func in get_all_ml_tools():
+    mcp.add_tool(tool_func)
 
