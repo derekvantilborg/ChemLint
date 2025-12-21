@@ -5,7 +5,111 @@
 # monte carlo (random train/val splits)
 # group-based splitting (scaffold or cluster)
 
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import KFold, StratifiedKFold, GroupKFold
+from molml_mcp.tools.core_mol.scaffolds import _get_scaffold
+from molml_mcp.tools.ml.training import _train_ml_model
+from molml_mcp.tools.ml.evaluation import _eval_single_ml_model
 
+
+# ============================================================================
+# CV Strategy Registry
+# ============================================================================
+
+CV_STRATEGY_REGISTRY = {}
+
+def register_cv_strategy(name: str):
+    """Decorator to register a CV strategy function."""
+    def decorator(func):
+        CV_STRATEGY_REGISTRY[name] = func
+        return func
+    return decorator
+
+def get_cv_splits(
+    strategy: str,
+    smiles: list,
+    n_folds: int,
+    random_state: int,
+    labels: list = None,
+    clusters: list = None,
+    val_size: float = None,
+    scaffold_type: str = 'bemis_murcko',
+    shuffle: bool = True,
+    p: int = 1,
+    max_splits: int = None
+) -> list[dict]:
+    """
+    Generic function to get CV splits for any registered strategy.
+    
+    Args:
+        strategy: CV strategy name ('kfold', 'stratified', 'montecarlo', 'scaffold', 'cluster', 'leavepout')
+        smiles: List of SMILES strings
+        n_folds: Number of folds/splits
+        random_state: Random seed
+        labels: List of labels (required for 'stratified')
+        clusters: List of cluster assignments (required for 'cluster')
+        val_size: Validation size fraction (used for 'montecarlo', optional for others)
+        scaffold_type: Scaffold type for 'scaffold' strategy
+        shuffle: Whether to shuffle (used by most strategies)
+        p: Number of samples to leave out (for 'leavepout')
+        max_splits: Maximum splits for 'leavepout'
+    
+    Returns:
+        List of dicts with keys 'train_smiles' and 'val_smiles'
+    """
+    if strategy not in CV_STRATEGY_REGISTRY:
+        available = ', '.join(CV_STRATEGY_REGISTRY.keys())
+        raise ValueError(f"Unknown CV strategy: {strategy}. Available: {available}")
+    
+    # Build kwargs dict based on strategy requirements
+    kwargs = {
+        'k': n_folds,
+        'smiles': smiles,
+        'val_size': val_size if val_size is not None else 1.0 / n_folds,
+        'random_state': random_state,
+        'shuffle': shuffle
+    }
+    
+    # Add strategy-specific parameters
+    if strategy == 'stratified':
+        if labels is None:
+            raise ValueError("Stratified CV requires 'labels' parameter")
+        kwargs['y'] = labels
+    
+    elif strategy == 'cluster':
+        if clusters is None:
+            raise ValueError("Cluster-based CV requires 'clusters' parameter")
+        kwargs['clusters'] = clusters
+    
+    elif strategy == 'scaffold':
+        kwargs['scaffold_type'] = scaffold_type
+    
+    elif strategy == 'montecarlo':
+        kwargs = {
+            'n_splits': n_folds,
+            'smiles': smiles,
+            'val_size': val_size if val_size is not None else 0.2,
+            'random_state': random_state
+        }
+    
+    elif strategy == 'leavepout':
+        kwargs = {
+            'p': p,
+            'smiles': smiles,
+            'val_size': 1.0 / len(smiles),
+            'random_state': random_state,
+            'max_splits': max_splits if max_splits is not None else n_folds
+        }
+    
+    return CV_STRATEGY_REGISTRY[strategy](**kwargs)
+
+
+# ============================================================================
+# CV Strategy Implementations
+# ============================================================================
+
+@register_cv_strategy('kfold')
 def cv_splits_kfold(k: int, smiles: list, val_size: float, random_state: int, shuffle: bool = True) -> list[dict]:
     """
     Split data into k folds for cross-validation.
@@ -36,6 +140,7 @@ def cv_splits_kfold(k: int, smiles: list, val_size: float, random_state: int, sh
     
     return splits
 
+@register_cv_strategy('stratified')
 def cv_splits_stratifiedkfold(k: int, smiles: list, y: list, val_size: float, random_state: int, shuffle: bool = True) -> list[dict]:
     """
     Split data into k stratified folds for cross-validation.
@@ -72,6 +177,7 @@ def cv_splits_stratifiedkfold(k: int, smiles: list, y: list, val_size: float, ra
     
     return splits
 
+@register_cv_strategy('leavepout')
 def cv_splits_leavepout(p: int, smiles: list, val_size: float, random_state: int, max_splits: int = None) -> list[dict]:
     """
     Split data using Leave-P-Out cross-validation.
@@ -116,6 +222,7 @@ def cv_splits_leavepout(p: int, smiles: list, val_size: float, random_state: int
     
     return splits
 
+@register_cv_strategy('montecarlo')
 def cv_splits_montecarlo(n_splits: int, smiles: list, val_size: float, random_state: int) -> list[dict]:
     """
     Split data using Monte Carlo cross-validation (repeated random sub-sampling).
@@ -149,6 +256,7 @@ def cv_splits_montecarlo(n_splits: int, smiles: list, val_size: float, random_st
     
     return splits
 
+@register_cv_strategy('cluster')
 def cv_splits_cluster(k: int, smiles: list, clusters: list, val_size: float, random_state: int, shuffle: bool = True) -> list[dict]:
     """
     Split data into k folds based on pre-defined cluster assignments.
@@ -208,6 +316,7 @@ def cv_splits_cluster(k: int, smiles: list, clusters: list, val_size: float, ran
     return splits
 
 
+@register_cv_strategy('scaffold')
 def cv_splits_scaffold(k: int, smiles: list, val_size: float, random_state: int, scaffold_type: str = 'bemis_murcko', shuffle: bool = True) -> list[dict]:
     """
     Split data into k folds based on Bemis-Murcko scaffolds.
@@ -282,15 +391,127 @@ def cv_splits_scaffold(k: int, smiles: list, val_size: float, random_state: int,
     )
 
 
-def _cross_validate_and_eval(model, X, Y, cv_strategy: str, n_folds: int, random_state: int, task_type: str, metric: str) -> float:
-    # internal function for cross validation in for hyperparam tuning. Returns the average metric across folds
+def _cross_validate_and_eval(
+    model_algorithm: str,
+    dataset: pd.DataFrame,
+    smiles_column: str,
+    label_column: str,
+    feature_vector_dict: dict,
+    cv_strategy: str,
+    n_folds: int,
+    random_state: int,
+    task_type: str,
+    metric: str,
+    hyperparameters: dict = None,
+    cluster_column: str = None
+) -> float:
+    """
+    Internal function for cross validation used in hyperparameter tuning.
     
-    # create the CV splits
-
-    # perform model training and evaluation for each fold using _train_ml_model() and _eval_single_ml_model()
-
-    # return average metric across folds
-    pass
+    Args:
+        model_algorithm: Name of the ML algorithm (e.g., 'random_forest')
+        dataset: DataFrame with SMILES, labels, and optionally cluster columns
+        smiles_column: Name of SMILES column in dataset
+        label_column: Name of label column in dataset
+        feature_vector_dict: Dictionary mapping SMILES to feature vectors {smiles: [features]}
+        cv_strategy: CV strategy ('kfold', 'stratified', 'montecarlo', 'scaffold', 'cluster', 'leavepout')
+        n_folds: Number of folds/splits
+        random_state: Random seed
+        task_type: 'classification' or 'regression'
+        metric: Metric to evaluate (e.g., 'accuracy', 'f1_score', 'mse', 'r2')
+        hyperparameters: Dictionary of hyperparameters to pass to the model
+        cluster_column: Name of cluster column (required for cluster-based CV)
+    
+    Returns:
+        Average metric value across all folds
+    """
+    from molml_mcp.tools.ml.training import _train_ml_model
+    from molml_mcp.tools.ml.evaluation import _eval_single_ml_model
+    import numpy as np
+    
+    if hyperparameters is None:
+        hyperparameters = {}
+    
+    # Validate columns exist
+    if smiles_column not in dataset.columns:
+        raise ValueError(f"SMILES column '{smiles_column}' not found in dataset")
+    if label_column not in dataset.columns:
+        raise ValueError(f"Label column '{label_column}' not found in dataset")
+    
+    # Extract SMILES and labels from dataset
+    smiles_list = dataset[smiles_column].tolist()
+    labels = dataset[label_column].tolist()
+    
+    # Get clusters if needed for cluster-based CV
+    clusters = None
+    if cv_strategy == 'cluster':
+        if cluster_column is None:
+            raise ValueError("Cluster-based CV requires cluster_column parameter")
+        if cluster_column not in dataset.columns:
+            raise ValueError(f"Cluster column '{cluster_column}' not found in dataset")
+        clusters = dataset[cluster_column].tolist()
+    
+    # Create CV splits using the generic function
+    splits = get_cv_splits(
+        strategy=cv_strategy,
+        smiles=smiles_list,
+        n_folds=n_folds,
+        random_state=random_state,
+        labels=labels,
+        clusters=clusters,
+        val_size=None,  # Will use default 1.0/n_folds or 0.2 for montecarlo
+        scaffold_type='bemis_murcko',
+        shuffle=True,
+        p=1,  # Leave-one-out by default for leavepout strategy
+        max_splits=n_folds  # Limit leavepout to n_folds
+    )
+    
+    # Evaluate on each fold
+    scores = []
+    for fold_idx, split in enumerate(splits):
+        # Get train and val SMILES
+        train_smiles = split['train_smiles']
+        val_smiles = split['val_smiles']
+        
+        # Get feature vectors for train and val SMILES
+        X_train = np.array([feature_vector_dict[smi] for smi in train_smiles])
+        X_val = np.array([feature_vector_dict[smi] for smi in val_smiles])
+        
+        # Get labels for train and val SMILES from dataset
+        # Create SMILES -> label mapping from dataset
+        smiles_to_label = dict(zip(dataset[smiles_column], dataset[label_column]))
+        
+        y_train = np.array([smiles_to_label[smi] for smi in train_smiles])
+        y_val = np.array([smiles_to_label[smi] for smi in val_smiles])
+        
+        # Train model on this fold
+        trained_model = _train_ml_model(
+            X=X_train,
+            y=y_train,
+            model_algorithm=model_algorithm,
+            hyperparameters=hyperparameters,
+            task_type=task_type,
+            random_state=random_state
+        )
+        
+        # Evaluate on validation set
+        fold_score = _eval_single_ml_model(
+            model=trained_model,
+            X=X_val,
+            y=y_val,
+            metric=metric,
+            task_type=task_type
+        )
+        
+        # Skip None scores (e.g., roc_auc for models without predict_proba)
+        if fold_score is not None:
+            scores.append(fold_score)
+    
+    # Return average metric across folds
+    if len(scores) == 0:
+        raise ValueError(f"No valid scores computed for metric '{metric}'")
+    
+    return float(np.mean(scores))
 
 
 
