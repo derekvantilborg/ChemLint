@@ -149,8 +149,137 @@ def cv_splits_montecarlo(n_splits: int, smiles: list, val_size: float, random_st
     
     return splits
 
-def cv_splits_groupbased():
-    pass
+def cv_splits_cluster(k: int, smiles: list, clusters: list, val_size: float, random_state: int, shuffle: bool = True) -> list[dict]:
+    """
+    Split data into k folds based on pre-defined cluster assignments.
+    
+    Group-based splitting ensures that all molecules in the same cluster are kept together
+    in either training or validation. This is critical for evaluating model generalization
+    to new chemical scaffolds or structural clusters.
+    
+    Uses sklearn's GroupKFold under the hood, which ensures no cluster appears in both
+    train and validation within the same fold.
+    
+    Args:
+        k: Number of folds
+        smiles: List of SMILES strings
+        clusters: List of cluster assignments (one per SMILES). Can be integers, strings, or any hashable type.
+        val_size: Fraction of data to use for validation (not used in k-fold, kept for API consistency)
+        random_state: Random seed for reproducibility (used when shuffle=True)
+        shuffle: Whether to shuffle the groups before splitting
+    
+    Returns:
+        List of dicts with keys 'train_smiles' and 'val_smiles'
+        [{'train_smiles': [...], 'val_smiles': [...]}, ...]
+    
+    Note:
+        - Fold sizes may be unequal if clusters have different sizes
+        - All molecules in the same cluster will be in the same fold
+        - Use for scaffold-based or structural cluster-based CV
+    """
+    from sklearn.model_selection import GroupKFold
+    import numpy as np
+    
+    if len(smiles) != len(clusters):
+        raise ValueError(f"Length mismatch: {len(smiles)} SMILES but {len(clusters)} cluster assignments")
+    
+    smiles_array = np.array(smiles)
+    clusters_array = np.array(clusters)
+    
+    # GroupKFold doesn't support shuffle directly, so we shuffle the groups manually if needed
+    if shuffle:
+        unique_clusters = np.unique(clusters_array)
+        np.random.seed(random_state)
+        shuffled_clusters = np.random.permutation(unique_clusters)
+        
+        # Create a mapping from old cluster ID to new shuffled order
+        cluster_map = {old: new for new, old in enumerate(shuffled_clusters)}
+        clusters_array = np.array([cluster_map[c] for c in clusters_array])
+    
+    gkf = GroupKFold(n_splits=k)
+    
+    splits = []
+    for train_idx, val_idx in gkf.split(smiles_array, groups=clusters_array):
+        splits.append({
+            'train_smiles': smiles_array[train_idx].tolist(),
+            'val_smiles': smiles_array[val_idx].tolist()
+        })
+    
+    return splits
+
+
+def cv_splits_scaffold(k: int, smiles: list, val_size: float, random_state: int, scaffold_type: str = 'bemis_murcko', shuffle: bool = True) -> list[dict]:
+    """
+    Split data into k folds based on Bemis-Murcko scaffolds.
+    
+    Automatically extracts scaffolds from SMILES, assigns each unique scaffold a cluster ID,
+    and uses cluster-based splitting. Molecules without a scaffold are assigned to a separate
+    'no_scaffold' cluster. This ensures models are evaluated on their ability to generalize
+    to new chemical scaffolds.
+    
+    Args:
+        k: Number of folds
+        smiles: List of SMILES strings
+        val_size: Fraction of data to use for validation (not used in k-fold, kept for API consistency)
+        random_state: Random seed for reproducibility
+        scaffold_type: Type of scaffold to extract ('bemis_murcko', 'generic', 'cyclic_skeleton')
+        shuffle: Whether to shuffle the scaffold groups before splitting
+    
+    Returns:
+        List of dicts with keys 'train_smiles' and 'val_smiles'
+        [{'train_smiles': [...], 'val_smiles': [...]}, ...]
+    
+    Note:
+        - Molecules with the same scaffold will always be in the same fold
+        - Molecules without a scaffold are grouped together in a 'no_scaffold' cluster
+        - Uses cv_splits_cluster internally after scaffold extraction
+    """
+    from molml_mcp.tools.core_mol.scaffolds import _get_scaffold
+    
+    # Extract scaffolds for all SMILES
+    scaffold_list = []
+    for smi in smiles:
+        scaffold_smi, comment = _get_scaffold(smi, scaffold_type=scaffold_type)
+        scaffold_list.append(scaffold_smi)
+    
+    # Create cluster assignments: map scaffold SMILES to cluster IDs
+    # Molecules with None/no scaffold get their own cluster
+    unique_scaffolds = {}
+    cluster_id = 0
+    
+    # Reserve cluster 0 for molecules without scaffolds
+    no_scaffold_cluster = 0
+    cluster_id = 1
+    
+    clusters = []
+    for scaffold_smi in scaffold_list:
+        if scaffold_smi is None or scaffold_smi == '':
+            # Assign to 'no_scaffold' cluster
+            clusters.append(no_scaffold_cluster)
+        else:
+            # Assign to scaffold-specific cluster
+            if scaffold_smi not in unique_scaffolds:
+                unique_scaffolds[scaffold_smi] = cluster_id
+                cluster_id += 1
+            clusters.append(unique_scaffolds[scaffold_smi])
+    
+    # Check if we have enough unique scaffolds for k folds
+    n_unique_clusters = len(set(clusters))
+    if k > n_unique_clusters:
+        raise ValueError(
+            f"Cannot split into {k} folds with only {n_unique_clusters} unique scaffolds. "
+            f"Reduce k to {n_unique_clusters} or fewer."
+        )
+    
+    # Use cluster-based splitting
+    return cv_splits_cluster(
+        k=k,
+        smiles=smiles,
+        clusters=clusters,
+        val_size=val_size,
+        random_state=random_state,
+        shuffle=shuffle
+    )
 
 
 def _cross_validate_and_eval(model, X, Y, cv_strategy: str, n_folds: int, random_state: int, task_type: str, metric: str) -> float:
