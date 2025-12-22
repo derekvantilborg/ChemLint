@@ -400,7 +400,6 @@ def _cross_validate_and_eval(
     cv_strategy: str,
     n_folds: int,
     random_state: int,
-    task_type: str,
     metric: str,
     hyperparameters: dict = None,
     cluster_column: str = None
@@ -417,7 +416,6 @@ def _cross_validate_and_eval(
         cv_strategy: CV strategy ('kfold', 'stratified', 'montecarlo', 'scaffold', 'cluster', 'leavepout')
         n_folds: Number of folds/splits
         random_state: Random seed
-        task_type: 'classification' or 'regression'
         metric: Metric to evaluate (e.g., 'accuracy', 'f1_score', 'mse', 'r2')
         hyperparameters: Dictionary of hyperparameters to pass to the model
         cluster_column: Name of cluster column (required for cluster-based CV)
@@ -490,7 +488,6 @@ def _cross_validate_and_eval(
             y=y_train,
             model_algorithm=model_algorithm,
             hyperparameters=hyperparameters,
-            task_type=task_type,
             random_state=random_state
         )
         
@@ -499,8 +496,7 @@ def _cross_validate_and_eval(
             model=trained_model,
             X=X_val,
             y=y_val,
-            metric=metric,
-            task_type=task_type
+            metric=metric
         )
         
         # Skip None scores (e.g., roc_auc for models without predict_proba)

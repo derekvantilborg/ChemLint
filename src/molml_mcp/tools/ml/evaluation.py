@@ -6,8 +6,7 @@ def _eval_single_ml_model(
     model,
     X: np.ndarray,
     y: np.ndarray,
-    metric: str,
-    task_type: str
+    metric: str
 ) -> float:
     """
     Evaluate a single ML model on a dataset using a specific metric.
