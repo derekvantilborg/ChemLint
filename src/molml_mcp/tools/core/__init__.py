@@ -26,6 +26,9 @@ from molml_mcp.tools.core.dim_reduction import (
     reduce_dimensions_pca,
     reduce_dimensions_tsne,
 )
+from molml_mcp.tools.core.statistics import (
+    get_all_normality_test_tools,
+)
 
 __all__ = [
     'store_csv_as_dataset',
@@ -48,4 +51,5 @@ __all__ = [
     'filter_by_functional_groups',
     'reduce_dimensions_pca',
     'reduce_dimensions_tsne',
+    'get_all_normality_test_tools',
 ]
