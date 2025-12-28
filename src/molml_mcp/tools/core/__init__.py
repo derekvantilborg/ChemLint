@@ -28,6 +28,8 @@ from molml_mcp.tools.core.dim_reduction import (
 )
 from molml_mcp.tools.core.statistics import (
     get_all_normality_test_tools,
+    get_all_paired_test_tools,
+    get_all_correlation_test_tools,
 )
 
 __all__ = [
@@ -52,4 +54,6 @@ __all__ = [
     'reduce_dimensions_pca',
     'reduce_dimensions_tsne',
     'get_all_normality_test_tools',
+    'get_all_paired_test_tools',
+    'get_all_correlation_test_tools',
 ]
