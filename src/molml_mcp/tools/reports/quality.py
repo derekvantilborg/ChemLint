@@ -300,7 +300,7 @@ def generate_quality_report(
     Generate comprehensive data quality report for a molecular dataset.
     
     This function orchestrates existing tools and unique analyses to generate
-    a 15-section formatted report covering:
+    a 14-section formatted report covering:
     1. Dataset Overview
     2. Data Completeness
     3. SMILES Validity
@@ -314,8 +314,7 @@ def generate_quality_report(
     11. Activity Distribution (optional)
     12. Scaffold Diversity
     13. Functional Group Analysis
-    14. Overall Quality Score
-    15. Recommended Cleaning Workflow
+    14. Recommended Cleaning Workflow
     
     Parameters
     ----------
@@ -343,9 +342,9 @@ def generate_quality_report(
             'report_text': str,  # Full formatted report
             'report_json': str,  # JSON report filename
             'report_txt': str,   # Text report filename
-            'quality_score': float,  # Overall quality score (0-100)
             'n_issues': int,  # Number of quality issues detected
             'critical_issues': list[str],  # List of critical issues requiring attention
+            'key_metrics': dict,  # Dictionary of key quality metrics
         }
     """
     # Load dataset
@@ -364,8 +363,8 @@ def generate_quality_report(
     # ========================================================================
     
     # 1. Dataset overview (use get_dataset_summary)
-    summary_result = get_dataset_summary(input_filename, project_manifest_path)
-    column_stats = summary_result['column_stats']
+    summary_result = get_dataset_summary(project_manifest_path, input_filename)
+    column_stats = summary_result['column_summaries']
     
     # 2. Completeness analysis (from get_dataset_summary)
     completeness = {
@@ -540,12 +539,20 @@ def generate_quality_report(
         include_generic=False
     )
     
+    # Extract key scaffold metrics
+    scaffold_metrics = {
+        'n_unique_scaffolds': scaffold_result['n_unique_scaffolds'],
+        'diversity_ratio': scaffold_result['diversity_ratio'],
+        'gini_coefficient': scaffold_result['gini_coefficient'],
+        'shannon_entropy': scaffold_result['shannon_entropy']
+    }
+    
     # 13. Functional group analysis (unique helper)
     smiles_list = df[smiles_col].tolist()
     functional_groups_result = _analyze_functional_groups(smiles_list)
     
     # ========================================================================
-    # Generate formatted text report (15 sections)
+    # Generate formatted text report (14 sections)
     # ========================================================================
     
     report_lines = []
@@ -706,9 +713,15 @@ def generate_quality_report(
     report_lines.append("-" * 80)
     report_lines.append("12. SCAFFOLD DIVERSITY")
     report_lines.append("-" * 80)
-    # Parse scaffold report text for key metrics
-    scaffold_text = scaffold_result.get('report', '')
-    report_lines.append(scaffold_text.split('\n\n')[1] if '\n\n' in scaffold_text else "See scaffold report for details")
+    report_lines.append(f"Unique scaffolds: {scaffold_metrics['n_unique_scaffolds']}")
+    report_lines.append(f"Diversity ratio: {scaffold_metrics['diversity_ratio']:.3f}")
+    report_lines.append(f"Gini coefficient: {scaffold_metrics['gini_coefficient']:.3f}")
+    report_lines.append(f"Shannon entropy: {scaffold_metrics['shannon_entropy']:.2f}")
+    report_lines.append("")
+    report_lines.append("Interpretation:")
+    report_lines.append(f"  - Diversity ratio: {'High' if scaffold_metrics['diversity_ratio'] > 0.5 else 'Moderate' if scaffold_metrics['diversity_ratio'] > 0.3 else 'Low'} scaffold diversity")
+    report_lines.append(f"  - Gini coefficient: {'Low' if scaffold_metrics['gini_coefficient'] < 0.3 else 'Moderate' if scaffold_metrics['gini_coefficient'] < 0.6 else 'High'} inequality")
+    report_lines.append(f"  - Shannon entropy: {'High' if scaffold_metrics['shannon_entropy'] > 4 else 'Moderate' if scaffold_metrics['shannon_entropy'] > 2 else 'Low'} diversity")
     report_lines.append("")
     
     # Section 13: Functional Groups
@@ -725,63 +738,17 @@ def generate_quality_report(
         report_lines.append(f"{name}: {count} molecules ({pct:.1f}%)")
     report_lines.append("")
     
-    # Section 14: Quality Score
+    # Section 14: Recommendations
     report_lines.append("-" * 80)
-    report_lines.append("14. OVERALL QUALITY SCORE")
-    report_lines.append("-" * 80)
-    
-    # Calculate quality score (0-100)
-    score_components = []
-    
-    # Completeness (20 points)
-    avg_missing = np.mean([stats['pct_missing'] for stats in completeness.values()])
-    completeness_score = max(0, 20 * (1 - avg_missing / 100))
-    score_components.append(completeness_score)
-    
-    # Validity (20 points)
-    validity_score = 20 * (validity_result['pct_valid'] / 100)
-    score_components.append(validity_score)
-    
-    # PAINS (15 points)
-    pains_score = 15 * (1 - pains_result['pct_pains'] / 100)
-    score_components.append(pains_score)
-    
-    # Drug-likeness (15 points) - Lipinski
-    druglike_score = 15 * (lipinski_result['pct_compliant'] / 100)
-    score_components.append(druglike_score)
-    
-    # QED (15 points)
-    if qed_result:
-        qed_score = 15 * qed_result['mean']
-        score_components.append(qed_score)
-    else:
-        score_components.append(0)
-    
-    # Duplicates (15 points)
-    dup_pct = (dup_result.get('n_duplicates', 0) / n_molecules * 100) if n_molecules > 0 else 0
-    dup_score = max(0, 15 * (1 - dup_pct / 20))  # Penalize >20% duplicates
-    score_components.append(dup_score)
-    
-    overall_quality_score = sum(score_components)
-    
-    report_lines.append(f"Overall Quality Score: {overall_quality_score:.1f}/100")
-    report_lines.append("")
-    report_lines.append("Component scores:")
-    report_lines.append(f"  Completeness: {completeness_score:.1f}/20")
-    report_lines.append(f"  SMILES Validity: {validity_score:.1f}/20")
-    report_lines.append(f"  PAINS-free: {pains_score:.1f}/15")
-    report_lines.append(f"  Drug-likeness: {druglike_score:.1f}/15")
-    report_lines.append(f"  QED: {score_components[4]:.1f}/15")
-    report_lines.append(f"  Uniqueness: {dup_score:.1f}/15")
-    report_lines.append("")
-    
-    # Section 15: Recommendations
-    report_lines.append("-" * 80)
-    report_lines.append("15. RECOMMENDED CLEANING WORKFLOW")
+    report_lines.append("14. RECOMMENDED CLEANING WORKFLOW")
     report_lines.append("-" * 80)
     
     recommendations = []
     critical_issues = []
+    
+    # Calculate metrics for recommendations
+    avg_missing = np.mean([stats['pct_missing'] for stats in completeness.values()])
+    dup_pct = (dup_result.get('n_duplicates', 0) / n_molecules * 100) if n_molecules > 0 else 0
     
     if validity_result['pct_invalid'] > 5:
         recommendations.append("1. Remove invalid SMILES using clean_smiles tool")
@@ -848,21 +815,8 @@ def generate_quality_report(
             'examples': outlier_result.get('extreme_molecules', [])
         },
         'activity': activity_result,
-        'scaffold_diversity': {
-            'report_file': scaffold_result.get('report_txt')
-        },
+        'scaffold_diversity': scaffold_metrics,
         'functional_groups': functional_groups_result,
-        'quality_score': {
-            'overall': float(overall_quality_score),
-            'components': {
-                'completeness': float(completeness_score),
-                'validity': float(validity_score),
-                'pains_free': float(pains_score),
-                'drug_likeness': float(druglike_score),
-                'qed': float(score_components[4]),
-                'uniqueness': float(dup_score)
-            }
-        },
         'recommendations': recommendations,
         'critical_issues': critical_issues
     }
@@ -889,60 +843,16 @@ def generate_quality_report(
         'report_text': report_text,
         'report_json': json_filename,
         'report_txt': txt_filename,
-        'quality_score': float(overall_quality_score),
         'n_issues': len(critical_issues),
         'critical_issues': critical_issues,
         'n_molecules': n_molecules,
-        'sections': {
+        'key_metrics': {
             'completeness': completeness,
             'validity': validity_result,
-            'quality_components': {
-                'completeness': float(completeness_score),
-                'validity': float(validity_score),
-                'pains_free': float(pains_score),
-                'drug_likeness': float(druglike_score),
-                'qed': float(score_components[4]),
-                'uniqueness': float(dup_score)
-            }
+            'pct_pains': pains_result['pct_pains'],
+            'pct_lipinski_compliant': lipinski_result['pct_compliant'],
+            'pct_duplicates': float(dup_pct),
+            'scaffold_diversity': scaffold_metrics
         }
     }
 
-def generate_quality_report(
-    dataset_filename: str,
-    project_manifest_path: str,
-    smiles_column: str,
-    output_filename: str,
-    activity_column: Optional[str] = None,
-    activity_type: Optional[str] = None,
-    explanation: str = "Generated data quality report"
-) -> Dict:
-    """
-    Generate a comprehensive data quality report for a molecular dataset.
-    
-    TODO: Implement main report generation using helper functions.
-    
-    Parameters
-    ----------
-    dataset_filename : str
-        Input dataset filename from manifest.
-    project_manifest_path : str
-        Path to the project manifest.json file.
-    smiles_column : str
-        Name of the column containing SMILES strings.
-    output_filename : str
-        Name for the output report files.
-    activity_column : str, optional
-        Name of the column containing activity data.
-    activity_type : str, optional
-        Type of activity: 'classification' or 'continuous'.
-    explanation : str
-        Human-readable description of this operation.
-    
-    Returns
-    -------
-    dict
-        Report metadata and filenames.
-    """
-    # TODO: Implement full report generation
-    # This will be implemented in the next step
-    pass
