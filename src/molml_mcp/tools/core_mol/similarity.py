@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import cdist
+from typing import List
 from molml_mcp.infrastructure.resources import _load_resource, _store_resource
 
 
@@ -141,6 +142,125 @@ def _manhattan_similarity(feature_matrix: np.ndarray) -> np.ndarray:
     return similarity_matrix
 
 
+def _levenshtein_distance(s1: str, s2: str) -> int:
+    """
+    Compute Levenshtein (edit) distance between two strings.
+    
+    The minimum number of single-character edits (insertions, deletions, substitutions)
+    required to transform s1 into s2.
+    
+    Uses dynamic programming with O(min(m,n)) space complexity.
+    
+    Parameters
+    ----------
+    s1, s2 : str
+        Input strings to compare.
+        
+    Returns
+    -------
+    int
+        Edit distance between the strings.
+    """
+    if len(s1) < len(s2):
+        return _levenshtein_distance(s2, s1)
+    
+    if len(s2) == 0:
+        return len(s1)
+    
+    # Use rolling array to save space (only need previous row)
+    previous_row = range(len(s2) + 1)
+    
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            # Cost of insertions, deletions, or substitutions
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    
+    return previous_row[-1]
+
+
+def _edit_distance_similarity(smiles_list: List[str]) -> np.ndarray:
+    """
+    Compute normalized edit distance similarity matrix for SMILES strings.
+    
+    Edit distance (Levenshtein distance) measures the minimum number of character-level
+    edits needed to transform one string into another. This is normalized by the maximum
+    possible distance (length of longer string) to give a similarity score between 0 and 1.
+    
+    Normalized similarity = 1 - (edit_distance / max_length)
+    
+    Where max_length = max(len(s1), len(s2))
+    
+    **Use Cases**:
+    - Quick structural similarity without generating fingerprints
+    - Scaffold/substructure detection
+    - Identifying molecules with similar SMILES patterns
+    - Preprocessing or sanity checks
+    
+    **Limitations**:
+    - Sensitive to SMILES canonicalization (ensure consistent format)
+    - Different SMILES can represent same molecule
+    - Does not capture 3D or chemical similarity
+    - Slower than fingerprint-based methods for large datasets (O(N²×L²) complexity)
+    
+    **Performance**: For N molecules with average SMILES length L:
+    - Time: O(N² × L²) - use for N < 1000
+    - For larger datasets, use fingerprint-based methods instead
+    
+    Parameters
+    ----------
+    smiles_list : List[str]
+        List of SMILES strings.
+    
+    Returns
+    -------
+    np.ndarray
+        Symmetric similarity matrix of shape (n_molecules, n_molecules).
+        Values range from 0 (completely different) to 1 (identical).
+        Diagonal values are always 1.0.
+        
+    Example
+    -------
+    >>> smiles_list = ['CCO', 'CCCO', 'c1ccccc1']
+    >>> sim_matrix = _edit_distance_similarity(smiles_list)
+    >>> sim_matrix[0, 1]  # CCO vs CCCO: edit distance=1, max_len=4
+    0.75  # 1 - (1/4) = 0.75
+    """
+    n_molecules = len(smiles_list)
+    similarity_matrix = np.zeros((n_molecules, n_molecules))
+    
+    # Compute pairwise edit distances
+    for i in range(n_molecules):
+        similarity_matrix[i, i] = 1.0  # Identical to self
+        
+        for j in range(i + 1, n_molecules):
+            s1 = smiles_list[i]
+            s2 = smiles_list[j]
+            
+            # Compute edit distance
+            edit_dist = _levenshtein_distance(s1, s2)
+            
+            # Normalize by maximum possible distance (length of longer string)
+            max_len = max(len(s1), len(s2))
+            
+            if max_len == 0:
+                # Both empty strings
+                normalized_sim = 1.0
+            else:
+                # Similarity = 1 - (normalized distance)
+                normalized_sim = 1.0 - (edit_dist / max_len)
+            
+            # Matrix is symmetric
+            similarity_matrix[i, j] = normalized_sim
+            similarity_matrix[j, i] = normalized_sim
+    
+    return similarity_matrix
+
+
 # Metric dispatch dictionary for easy extension
 _SIMILARITY_METRICS = {
     'tanimoto': _tanimoto_similarity,
@@ -148,6 +268,11 @@ _SIMILARITY_METRICS = {
     'cosine': _cosine_similarity,
     'euclidean': _euclidean_similarity,
     'manhattan': _manhattan_similarity,
+}
+
+# String-based metrics that work directly on SMILES (no feature vectors needed)
+_STRING_METRICS = {
+    'edit_distance': _edit_distance_similarity,
 }
 
 
@@ -160,7 +285,7 @@ def _compute_pairwise_similarity(feature_matrix: np.ndarray, similarity_metric: 
     feature_matrix : np.ndarray
         Feature matrix of shape (n_molecules, n_features).
     similarity_metric : str
-        Similarity metric: 'tanimoto', 'dice', 'cosine', 'euclidean', or 'manhattan'.
+        Similarity metric: 'tanimoto', 'dice', 'cosine', 'euclidean', 'manhattan', or 'edit_distance'.
     
     Returns
     -------
@@ -172,15 +297,17 @@ def _compute_pairwise_similarity(feature_matrix: np.ndarray, similarity_metric: 
     ValueError
         If an unsupported similarity metric is specified.
     """
-    if similarity_metric not in _SIMILARITY_METRICS:
-        supported_metrics = list(_SIMILARITY_METRICS.keys())
+    all_metrics = {**_SIMILARITY_METRICS, **_STRING_METRICS}
+    
+    if similarity_metric not in all_metrics:
+        supported_metrics = list(all_metrics.keys())
         raise ValueError(
             f"Unsupported similarity metric: '{similarity_metric}'. "
             f"Supported metrics: {supported_metrics}"
         )
     
     # Dispatch to appropriate metric function
-    similarity_func = _SIMILARITY_METRICS[similarity_metric]
+    similarity_func = all_metrics[similarity_metric]
     return similarity_func(feature_matrix)
 
 
@@ -222,6 +349,12 @@ def compute_similarity_matrix(
       - USE WITH: Continuous-valued descriptors or count fingerprints
       - Less sensitive to outliers than Euclidean
     
+    - **edit_distance**: Normalized Levenshtein distance on SMILES strings
+      - USE WITH: SMILES strings directly (no feature vectors needed!)
+      - PERFORMANCE: O(N²×L²) - slower than fingerprints for large datasets
+      - BEST FOR: Quick similarity checks, scaffold matching, N < 1000 molecules
+      - NOTE: Sensitive to SMILES canonicalization - ensure consistent format
+    
     Parameters
     ----------
     input_filename : str
@@ -233,6 +366,7 @@ def compute_similarity_matrix(
     feature_vectors_filename : str
         Filename of the precomputed feature vectors (joblib format).
         Must be a dictionary mapping SMILES to numpy arrays (fingerprints/descriptors).
+        NOT REQUIRED for 'edit_distance' metric (works directly on SMILES).
     output_filename : str
         Base name for the output similarity matrix (extension added automatically).
     explanation : str
@@ -244,6 +378,7 @@ def compute_similarity_matrix(
         - 'cosine': For count fingerprints or continuous descriptors
         - 'euclidean': For continuous descriptors
         - 'manhattan': For continuous descriptors
+        - 'edit_distance': For SMILES strings directly (no feature vectors needed)
     
     Returns
     -------
@@ -306,9 +441,8 @@ def compute_similarity_matrix(
     smiles_to_maccs_dataset : Generate MACCS keys fingerprints
     smiles_to_rdkit_fp_dataset : Generate RDKit topological fingerprints
     """
-    # Load dataset and feature vectors
+    # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
-    feature_vectors = _load_resource(project_manifest_path, feature_vectors_filename)
     
     # Validate inputs
     if smiles_column not in df.columns:
@@ -318,21 +452,29 @@ def compute_similarity_matrix(
     smiles_list = df[smiles_column].tolist()
     n_molecules = len(smiles_list)
     
-    # Validate that all SMILES have feature vectors
-    missing_smiles = [smi for smi in smiles_list if smi not in feature_vectors]
-    if missing_smiles:
-        raise ValueError(
-            f"Feature vectors missing for {len(missing_smiles)} molecules. "
-            f"Examples: {missing_smiles[:5]}. "
-            f"Ensure all SMILES in the dataset have corresponding feature vectors."
-        )
-    
-    # Build feature matrix (N × D) where N = number of molecules, D = feature dimension
-    # Maintain order from SMILES list
-    feature_matrix = np.array([feature_vectors[smi] for smi in smiles_list])
-    
-    # Compute similarity matrix using helper function
-    similarity_matrix = _compute_pairwise_similarity(feature_matrix, similarity_metric)
+    # Check if this is a string-based metric (works directly on SMILES)
+    if similarity_metric in _STRING_METRICS:
+        # Edit distance works directly on SMILES strings
+        similarity_matrix = _edit_distance_similarity(smiles_list)
+    else:
+        # Feature-based metrics need precomputed feature vectors
+        feature_vectors = _load_resource(project_manifest_path, feature_vectors_filename)
+        
+        # Validate that all SMILES have feature vectors
+        missing_smiles = [smi for smi in smiles_list if smi not in feature_vectors]
+        if missing_smiles:
+            raise ValueError(
+                f"Feature vectors missing for {len(missing_smiles)} molecules. "
+                f"Examples: {missing_smiles[:5]}. "
+                f"Ensure all SMILES in the dataset have corresponding feature vectors."
+            )
+        
+        # Build feature matrix (N × D) where N = number of molecules, D = feature dimension
+        # Maintain order from SMILES list
+        feature_matrix = np.array([feature_vectors[smi] for smi in smiles_list])
+        
+        # Compute similarity matrix using helper function
+        similarity_matrix = _compute_pairwise_similarity(feature_matrix, similarity_metric)
     
     # Compute statistics (exclude diagonal for mean/median)
     # Use np.triu_indices to get upper triangle indices (excluding diagonal)
