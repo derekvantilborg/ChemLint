@@ -1,0 +1,11 @@
+SMILES,activity,mol_id,merge_strategy,strategy_reason
+CCO,1,m1,keep_first,"All values identical, recommend keeping first"
+CCO,1,m2,keep_first,"All values identical, recommend keeping first"
+CCO,1,m3,keep_first,"All values identical, recommend keeping first"
+CCC,1,m4,drop,"No significant agreement (p>0.05), recommend dropping"
+CCC,1,m5,drop,"No significant agreement (p>0.05), recommend dropping"
+CCC,0,m6,drop,"No significant agreement (p>0.05), recommend dropping"
+CCCC,1,m7,drop,"No significant agreement (p>0.05), recommend dropping"
+CCCC,0,m8,drop,"No significant agreement (p>0.05), recommend dropping"
+CCCCC,1,m9,unique,
+,1,m10,drop,"NaN SMILES, recommend dropping"

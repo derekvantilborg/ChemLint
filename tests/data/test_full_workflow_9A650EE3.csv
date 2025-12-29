@@ -1,0 +1,11 @@
+SMILES,activity,mol_id
+CCO,1,m1
+CCO,1,m2
+CCO,1,m3
+CCC,1,m4
+CCC,1,m5
+CCC,0,m6
+CCCC,1,m7
+CCCC,0,m8
+CCCCC,1,m9
+,1,m10

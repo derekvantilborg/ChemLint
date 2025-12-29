@@ -1,0 +1,13 @@
+smiles,name,cluster
+CCO,mol_0,0
+CC(C)O,mol_1,4
+CCCO,mol_2,0
+c1ccccc1,mol_3,2
+c1ccccc1C,mol_4,3
+c1ccccc1CC,mol_5,3
+CC(=O)C,mol_6,1
+CC(=O)O,mol_7,1
+CC(=O)OC,mol_8,1
+CCN,mol_9,0
+c1ccncc1,mol_10,2
+c1cncnc1,mol_11,2

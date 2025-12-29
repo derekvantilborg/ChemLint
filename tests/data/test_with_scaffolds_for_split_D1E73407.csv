@@ -1,0 +1,13 @@
+smiles,id,name,scaffold_bemis_murcko,scaffold_comments
+c1ccccc1O,0,phenol,c1ccccc1,Passed
+c1ccccc1N,1,aniline,c1ccccc1,Passed
+c1ccccc1C,2,toluene,c1ccccc1,Passed
+c1ccccc1F,3,fluorobenzene,c1ccccc1,Passed
+c1ccccc1Cl,4,chlorobenzene,c1ccccc1,Passed
+c1ccncc1,5,pyridine,c1ccncc1,Passed
+c1ccncc1C,6,methylpyridine,c1ccncc1,Passed
+c1ccncc1O,7,hydroxypyridine,c1ccncc1,Passed
+C1CCCCC1,8,cyclohexane,C1CCCCC1,Passed
+C1CCCCC1O,9,cyclohexanol,C1CCCCC1,Passed
+CCO,10,ethanol,,Failed: No scaffold found (molecule may lack ring systems)
+CCC,11,propane,,Failed: No scaffold found (molecule may lack ring systems)

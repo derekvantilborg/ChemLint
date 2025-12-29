@@ -1,0 +1,5 @@
+smiles,id,name
+CC(=O)C,1,acetone
+CC(=O)O,2,acetic_acid
+CC(=O)OCC,4,ethyl_acetate
+CC(=O)NC,7,acetamide

@@ -1,0 +1,10 @@
+SMILES,IC50,merge_strategy,strategy_reason
+CCO,10.1,mean,"CV lower than threshold (<=0.30), no outliers, recommend mean"
+CCO,10.2,mean,"CV lower than threshold (<=0.30), no outliers, recommend mean"
+CCO,10.0,mean,"CV lower than threshold (<=0.30), no outliers, recommend mean"
+CCC,5.0,drop,"CV exceeds threshold (>0.30), excessive uncertainty, recommend dropping"
+CCC,15.0,drop,"CV exceeds threshold (>0.30), excessive uncertainty, recommend dropping"
+CCC,8.0,drop,"CV exceeds threshold (>0.30), excessive uncertainty, recommend dropping"
+CCCC,7.5,mean,"CV lower than threshold (<=0.30), no outliers, recommend mean"
+CCCC,7.6,mean,"CV lower than threshold (<=0.30), no outliers, recommend mean"
+CCCCC,12.3,unique,

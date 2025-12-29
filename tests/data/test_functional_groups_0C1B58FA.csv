@@ -1,0 +1,14 @@
+smiles,id,name
+CCO,0,ethanol
+CC(=O)C,1,acetone
+CC(=O)O,2,acetic_acid
+CCN,3,ethylamine
+CC(=O)OCC,4,ethyl_acetate
+c1ccccc1O,5,phenol
+c1ccccc1N,6,aniline
+CC(=O)NC,7,acetamide
+CCOC,8,diethyl_ether
+CCS,9,ethanethiol
+CCF,10,fluoroethane
+CCCl,11,chloroethane
+c1ccncc1,12,pyridine

@@ -1,0 +1,3 @@
+smiles,id,name,scaffold_bemis_murcko,scaffold_comments
+C1CCCCC1,8,cyclohexane,C1CCCCC1,Passed
+C1CCCCC1O,9,cyclohexanol,C1CCCCC1,Passed

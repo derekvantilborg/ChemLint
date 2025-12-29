@@ -1,0 +1,8 @@
+smiles,id,name,scaffold_bemis_murcko
+CCO,0,ethanol,
+c1ccc2ccccc2c1,4,naphthalene,c1ccc2ccccc2c1
+c1cnc(N)nc1,5,pyrimidine,c1cncnc1
+c1ccncc1,6,pyridine,c1ccncc1
+c1ccccc1c2ccccc2,7,biphenyl,c1ccc(-c2ccccc2)cc1
+C1CCCCC1,9,cyclohexane,C1CCCCC1
+c1ccc2c(c1)ccc3c2cccc3,10,anthracene,c1ccc2c(c1)ccc1ccccc12

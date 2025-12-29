@@ -1,0 +1,4 @@
+smiles,id,name,scaffold_bemis_murcko,scaffold_comments
+c1ccncc1,5,pyridine,c1ccncc1,Passed
+c1ccncc1C,6,methylpyridine,c1ccncc1,Passed
+c1ccncc1O,7,hydroxypyridine,c1ccncc1,Passed

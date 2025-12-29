@@ -1,0 +1,3 @@
+smiles,id,name,QED
+CC(C)Cc1ccc(cc1)C(C)C(=O)O,1,ibuprofen,0.8215995486924976
+CC(C)NCC(COc1ccccc1)O,11,propranolol,0.7443142479340611

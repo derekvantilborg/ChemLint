@@ -1,0 +1,12 @@
+smiles,id,name
+CCO,0,ethanol
+c1ccccc1O,1,phenol
+c1ccccc1N,2,aniline
+c1ccc(O)cc1C,3,p-cresol
+c1ccc2ccccc2c1,4,naphthalene
+c1cnc(N)nc1,5,pyrimidine
+c1ccncc1,6,pyridine
+c1ccccc1c2ccccc2,7,biphenyl
+CC(C)(C)c1ccc(O)cc1,8,bht
+C1CCCCC1,9,cyclohexane
+c1ccc2c(c1)ccc3c2cccc3,10,anthracene

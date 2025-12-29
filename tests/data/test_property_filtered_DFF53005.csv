@@ -1,0 +1,6 @@
+smiles,id,name,MolWt,MolLogP
+CN1C=NC2=C1C(=O)N(C(=O)N2C)C,2,caffeine,194.194,-1.0293
+CC(C)(C)c1ccc(O)cc1,5,bht,150.22099999999998,2.689700000000001
+Cc1ccccc1N,7,o-toluidine,107.156,1.57722
+CC(=O)Oc1ccccc1C(=O)O,8,aspirin,180.15899999999996,1.3101
+CC(C)NCC(COc1ccccc1)O,11,propranolol,209.289,1.4242999999999997

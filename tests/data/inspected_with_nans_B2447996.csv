@@ -1,0 +1,8 @@
+SMILES,activity,merge_strategy,strategy_reason
+CCO,1.0,drop,"No significant agreement (p>0.05), recommend dropping"
+CCO,1.0,drop,"No significant agreement (p>0.05), recommend dropping"
+CCO,0.0,drop,"No significant agreement (p>0.05), recommend dropping"
+CCO,,drop,"NaN label, recommend dropping"
+CCC,1.0,keep_first,"Single value, no action needed"
+CCC,,drop,"NaN label, recommend dropping"
+CCCC,1.0,unique,

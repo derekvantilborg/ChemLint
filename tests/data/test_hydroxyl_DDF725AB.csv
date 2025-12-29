@@ -1,0 +1,4 @@
+smiles,id,name
+CCO,0,ethanol
+CC(=O)O,2,acetic_acid
+c1ccccc1O,5,phenol

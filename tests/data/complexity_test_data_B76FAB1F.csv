@@ -1,0 +1,9 @@
+SMILES,name,id
+C,Methane,0
+CCCl,Chloroethane,1
+c1ccccc1Br,Bromobenzene,2
+C@@H,Chiral,3
+CC(C)Cc1ccc(cc1)C(C)C(=O)O,Ibuprofen,4
+CN1C=NC2=C1C(=O)N(C(=O)N2C)C,Caffeine,5
+CC(C)(C)c1ccc(O)cc1,Phenol,6
+C1=CC=C2C(=C1)C=CC=C2,Naphthalene,7

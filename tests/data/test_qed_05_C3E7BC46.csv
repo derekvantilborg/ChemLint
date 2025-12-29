@@ -1,0 +1,7 @@
+smiles,id,name,QED
+CC(C)Cc1ccc(cc1)C(C)C(=O)O,1,ibuprofen,0.8215995486924976
+CN1C=NC2=C1C(=O)N(C(=O)N2C)C,2,caffeine,0.5384628262372215
+CC(C)(C)c1ccc(O)cc1,5,bht,0.6025012194870691
+Cc1ccccc1N,7,o-toluidine,0.5002819996278854
+CC(=O)Oc1ccccc1C(=O)O,8,aspirin,0.5501217966938848
+CC(C)NCC(COc1ccccc1)O,11,propranolol,0.7443142479340611

@@ -1,0 +1,8 @@
+SMILES,activity,merge_strategy,strategy_reason
+CCO,1,drop,"No significant agreement (p>0.05), recommend dropping"
+CCO,1,drop,"No significant agreement (p>0.05), recommend dropping"
+CCO,0,drop,"No significant agreement (p>0.05), recommend dropping"
+CCC,1,drop,"No significant agreement (p>0.05), recommend dropping"
+CCC,0,drop,"No significant agreement (p>0.05), recommend dropping"
+CCCC,1,unique,
+CCCCC,1,unique,

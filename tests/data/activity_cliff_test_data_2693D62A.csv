@@ -1,0 +1,9 @@
+SMILES,pIC50,name
+CCO,5.0,Ethanol
+CCCO,5.1,Propanol
+CCC(=O)O,7.0,Propionic acid
+c1ccccc1,6.0,Benzene
+c1ccccc1O,8.0,Phenol
+c1ccccc1C,6.2,Toluene
+CC(C)C,4.5,Isobutane
+CC(C)CO,4.7,Isobutanol

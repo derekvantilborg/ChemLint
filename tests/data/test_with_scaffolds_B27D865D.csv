@@ -1,0 +1,12 @@
+smiles,id,name,scaffold_bemis_murcko,scaffold_comments
+CCO,0,ethanol,,Failed: No scaffold found (molecule may lack ring systems)
+c1ccccc1O,1,phenol,c1ccccc1,Passed
+c1ccccc1N,2,aniline,c1ccccc1,Passed
+c1ccc(O)cc1C,3,p-cresol,c1ccccc1,Passed
+c1ccc2ccccc2c1,4,naphthalene,c1ccc2ccccc2c1,Passed
+c1cnc(N)nc1,5,pyrimidine,c1cncnc1,Passed
+c1ccncc1,6,pyridine,c1ccncc1,Passed
+c1ccccc1c2ccccc2,7,biphenyl,c1ccc(-c2ccccc2)cc1,Passed
+CC(C)(C)c1ccc(O)cc1,8,bht,c1ccccc1,Passed
+C1CCCCC1,9,cyclohexane,C1CCCCC1,Passed
+c1ccc2c(c1)ccc3c2cccc3,10,anthracene,c1ccc2c(c1)ccc1ccccc12,Passed

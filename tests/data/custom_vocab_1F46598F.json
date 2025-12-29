@@ -1,0 +1,1 @@
+{"vocab": {"<pad>": 0, "<unk>": 1, "C": 2, "c": 3, "N": 4, "n": 5, "O": 6, "o": 7, "Cl": 8, "Br": 9, "(": 10, ")": 11, "=": 12, "1": 13, "2": 14}, "vocab_size": 15, "special_tokens": {"pad": "<pad>", "unk": "<unk>"}, "metadata": {"description": "Small custom vocab", "token_count": 15}}

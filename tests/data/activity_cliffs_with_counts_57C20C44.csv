@@ -1,0 +1,9 @@
+SMILES,IC50_nM,name,is_activity_cliff_molecule,n_activity_cliff_partners,strongest_cliff_partner_idx,strongest_cliff_partner_smiles
+CCO,100,Ethanol,yes,1,2.0,CCC(=O)O
+CCCO,79,Propanol,no,0,,
+CCC(=O)O,1,Propionic acid,yes,1,0.0,CCO
+c1ccccc1,1000,Benzene,yes,1,4.0,c1ccccc1O
+c1ccccc1O,10,Phenol,yes,1,3.0,c1ccccc1
+c1ccccc1C,631,Toluene,no,0,,
+CC(C)C,3162,Isobutane,no,0,,
+CC(C)CO,1995,Isobutanol,no,0,,

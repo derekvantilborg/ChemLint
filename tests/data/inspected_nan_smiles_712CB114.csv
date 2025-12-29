@@ -1,0 +1,8 @@
+SMILES,activity,merge_strategy,strategy_reason
+CCO,1.0,keep_first,"All values identical, recommend keeping first"
+CCO,1.0,keep_first,"All values identical, recommend keeping first"
+,1.0,drop,"NaN SMILES, recommend dropping"
+,0.0,drop,"NaN SMILES, recommend dropping"
+CCC,1.0,keep_first,"Single value, no action needed"
+CCC,,drop,"NaN label, recommend dropping"
+CCCC,1.0,unique,

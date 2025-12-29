@@ -1,0 +1,4 @@
+SMILES,name,num_tokens,branches
+C,Methane,1,0
+CCCl,Chloroethane,3,0
+c1ccccc1Br,Bromobenzene,9,0

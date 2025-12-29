@@ -1,0 +1,3 @@
+smiles,id,name,MolWt,MolLogP,NumRotatableBonds,RingCount,NumAromaticRings,TotalRings
+CC(C)Cc1ccc(cc1)C(C)C(=O)O,1,ibuprofen,206.28499999999997,3.073200000000001,4,1,1,1
+CC(C)NCC(COc1ccccc1)O,11,propranolol,209.28900000000002,1.4242999999999997,6,1,1,1

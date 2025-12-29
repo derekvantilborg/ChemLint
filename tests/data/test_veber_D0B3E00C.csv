@@ -1,0 +1,12 @@
+smiles,id,name,TPSA,NumRotatableBonds
+CCO,0,ethanol,20.23,0
+CC(C)Cc1ccc(cc1)C(C)C(=O)O,1,ibuprofen,37.3,4
+CN1C=NC2=C1C(=O)N(C(=O)N2C)C,2,caffeine,61.82,0
+c1ccccc1,3,benzene,0.0,0
+CC(C)(C)c1ccc(O)cc1,5,bht,20.23,0
+C1CCCCC1,6,cyclohexane,0.0,0
+Cc1ccccc1N,7,o-toluidine,26.02,0
+CC(=O)Oc1ccccc1C(=O)O,8,aspirin,63.60000000000001,2
+CCCCCCCCC,9,nonane,0.0,6
+c1ccc2c(c1)ccc3c2cccc3,10,anthracene,0.0,0
+CC(C)NCC(COc1ccccc1)O,11,propranolol,41.489999999999995,6

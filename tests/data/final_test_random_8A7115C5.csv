@@ -1,0 +1,4 @@
+smiles,name,cluster,label
+c1ccccc1,mol_3,0,0
+c1ccncc1,mol_10,0,0
+c1cncnc1,mol_11,0,0

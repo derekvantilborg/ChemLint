@@ -1,0 +1,7 @@
+SMILES,IC50_nM,name
+CCO,100.0,Ethanol
+CCCO,,Propanol
+CCC(=O)O,1.0,Propionic acid
+c1ccccc1,,Benzene
+c1ccccc1O,10.0,Phenol
+c1ccccc1C,631.0,Toluene

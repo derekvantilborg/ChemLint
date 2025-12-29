@@ -1,0 +1,251 @@
+{
+    "project_name": "cleaning_test_project",
+    "created_at": "2025-12-10 20:15:18.345715",
+    "resources": [
+        {
+            "filename": "raw_dataset_64879276.csv",
+            "type_tag": "csv",
+            "explaination": "Raw dataset before cleaning",
+            "timestamp": "2025-12-10 20:15:23.313948",
+            "parent_function_name": "store_csv_as_dataset",
+            "parent_function_inputs": {
+                "file_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test.csv",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "filename": "raw_dataset",
+                "explanation": "Raw dataset before cleaning"
+            },
+            "module_name": "molml_mcp.tools.core.dataset_ops"
+        },
+        {
+            "filename": "cleaned_dataset_step1_canonicalized_C932B6B9.csv",
+            "type_tag": "csv",
+            "explaination": "Step 1: Initial canonicalization",
+            "timestamp": "2025-12-10 20:15:31.919547",
+            "parent_function_name": "canonicalize_smiles_dataset",
+            "parent_function_inputs": {
+                "input_filename": "raw_dataset_64879276.csv",
+                "column_name": "smiles",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step1_canonicalized",
+                "explanation": "Step 1: Initial canonicalization"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step2_desalted_E4DB99C8.csv",
+            "type_tag": "csv",
+            "explaination": "Step 2: Salt removal",
+            "timestamp": "2025-12-10 20:15:31.924913",
+            "parent_function_name": "remove_salts_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step1_canonicalized_C932B6B9.csv",
+                "column_name": "smiles_after_canonicalization",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step2_desalted",
+                "explanation": "Step 2: Salt removal",
+                "salt_smarts": "[Cl,Na,Mg,Ca,K,Br,Zn,Ag,Al,Li,I,O,N,H]"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step3_desolvated_60A0629C.csv",
+            "type_tag": "csv",
+            "explaination": "Step 3: Solvent removal",
+            "timestamp": "2025-12-10 20:15:31.927083",
+            "parent_function_name": "remove_common_solvents_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step2_desalted_E4DB99C8.csv",
+                "column_name": "smiles_after_salt_removal",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step3_desolvated",
+                "explanation": "Step 3: Solvent removal"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step4_defragmented_815374EB.csv",
+            "type_tag": "csv",
+            "explaination": "Step 4: Defragmentation",
+            "timestamp": "2025-12-10 20:15:31.928955",
+            "parent_function_name": "defragment_smiles_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step3_desolvated_60A0629C.csv",
+                "column_name": "smiles_after_solvent_removal",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step4_defragmented",
+                "explanation": "Step 4: Defragmentation",
+                "keep_largest_fragment": true
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step5_normalized_31D52DC1.csv",
+            "type_tag": "csv",
+            "explaination": "Step 5: Functional group normalization",
+            "timestamp": "2025-12-10 20:15:31.933952",
+            "parent_function_name": "normalize_functional_groups_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step4_defragmented_815374EB.csv",
+                "column_name": "smiles_after_defragmentation",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step5_normalized",
+                "explanation": "Step 5: Functional group normalization"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step6_reionized_1B0B5487.csv",
+            "type_tag": "csv",
+            "explaination": "Step 6: Reionization",
+            "timestamp": "2025-12-10 20:15:31.938453",
+            "parent_function_name": "reionize_smiles_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step5_normalized_31D52DC1.csv",
+                "column_name": "smiles_after_functional_group_normalization",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step6_reionized",
+                "explanation": "Step 6: Reionization"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step7_neutralized_1179F207.csv",
+            "type_tag": "csv",
+            "explaination": "Step 7: Neutralization",
+            "timestamp": "2025-12-10 20:15:31.943023",
+            "parent_function_name": "neutralize_smiles_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step6_reionized_1B0B5487.csv",
+                "column_name": "smiles_after_reionization",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step7_neutralized",
+                "explanation": "Step 7: Neutralization"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step8_deisotoped_3E7CD972.csv",
+            "type_tag": "csv",
+            "explaination": "Step 8: Isotope removal",
+            "timestamp": "2025-12-10 20:15:31.946846",
+            "parent_function_name": "remove_isotopes_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step7_neutralized_1179F207.csv",
+                "column_name": "smiles_after_neutralization",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step8_deisotoped",
+                "explanation": "Step 8: Isotope removal"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step10_tautomers_A71BDFDA.csv",
+            "type_tag": "csv",
+            "explaination": "Step 10: Tautomer canonicalization",
+            "timestamp": "2025-12-10 20:15:31.953789",
+            "parent_function_name": "canonicalize_tautomers_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step8_deisotoped_3E7CD972.csv",
+                "column_name": "smiles_after_isotope_removal",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step10_tautomers",
+                "explanation": "Step 10: Tautomer canonicalization"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step11_stereo_260AB376.csv",
+            "type_tag": "csv",
+            "explaination": "Step 11: Stereochemistry standardization",
+            "timestamp": "2025-12-10 20:15:31.966354",
+            "parent_function_name": "standardize_stereochemistry_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step10_tautomers_A71BDFDA.csv",
+                "column_name": "smiles_after_tautomer_canonicalization",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step11_stereo",
+                "explanation": "Step 11: Stereochemistry standardization",
+                "stereo_policy": "flatten",
+                "assign_policy": "first",
+                "max_isomers": 32,
+                "try_embedding": false,
+                "only_unassigned": true,
+                "random_seed": 42
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_step12_validated_58EA053A.csv",
+            "type_tag": "csv",
+            "explaination": "Step 12: Final validation",
+            "timestamp": "2025-12-10 20:15:31.969497",
+            "parent_function_name": "validate_smiles_dataset",
+            "parent_function_inputs": {
+                "input_filename": "cleaned_dataset_step11_stereo_260AB376.csv",
+                "column_name": "smiles_after_stereo_standardization",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset_step12_validated",
+                "explanation": "Step 12: Final validation"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "cleaned_dataset_8FCE8057.csv",
+            "type_tag": "csv",
+            "explaination": "Apply default SMILES standardization pipeline",
+            "timestamp": "2025-12-10 20:15:31.975668",
+            "parent_function_name": "default_SMILES_standardization_pipeline_dataset",
+            "parent_function_inputs": {
+                "input_filename": "raw_dataset_64879276.csv",
+                "column_name": "smiles",
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "output_filename": "cleaned_dataset",
+                "explanation": "Apply default SMILES standardization pipeline",
+                "stereo_policy": "flatten",
+                "skip_isotope_removal": false,
+                "enable_metal_disconnection": false,
+                "drop_inorganics": false,
+                "salt_smarts": "[Cl,Na,Mg,Ca,K,Br,Zn,Ag,Al,Li,I,O,N,H]"
+            },
+            "module_name": "molml_mcp.tools.cleaning.mol_cleaning"
+        },
+        {
+            "filename": "train_set_7B29B9A9.csv",
+            "type_tag": "csv",
+            "explaination": "80/20 train/test split of cleaned dataset",
+            "timestamp": "2025-12-10 20:15:40.017660",
+            "parent_function_name": "random_split_dataset",
+            "parent_function_inputs": {
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "input_filename": "cleaned_dataset_8FCE8057.csv",
+                "train_df_output_filename": "train_set",
+                "test_df_output_filename": "test_set",
+                "val_df_output_filename": null,
+                "explanation": "80/20 train/test split of cleaned dataset",
+                "test_size": 0.2,
+                "val_size": 0.0,
+                "random_state": 42
+            },
+            "module_name": "molml_mcp.tools.core_mol.data_splitting"
+        },
+        {
+            "filename": "test_set_E43F509B.csv",
+            "type_tag": "csv",
+            "explaination": "80/20 train/test split of cleaned dataset",
+            "timestamp": "2025-12-10 20:15:40.019165",
+            "parent_function_name": "random_split_dataset",
+            "parent_function_inputs": {
+                "project_manifest_path": "/Users/derekvantilborg/Dropbox/PD/molml_mcp/tests/data/cleaning_test_project_manifest.json",
+                "input_filename": "cleaned_dataset_8FCE8057.csv",
+                "train_df_output_filename": "train_set_7B29B9A9.csv",
+                "test_df_output_filename": "test_set",
+                "val_df_output_filename": null,
+                "explanation": "80/20 train/test split of cleaned dataset",
+                "test_size": 0.2,
+                "val_size": 0.0,
+                "random_state": 42
+            },
+            "module_name": "molml_mcp.tools.core_mol.data_splitting"
+        }
+    ]
+}

@@ -81,7 +81,7 @@ def annotate_activity_cliff_molecules(
     similarity_matrix_filename: str,
     output_filename: str,
     explanation: str = "Annotated molecules with activity cliff information",
-    similarity_threshold: float = 0.9,
+    similarity_threshold: float = 0.8,
     fold_difference_threshold: float = 10.0,
 ) -> Dict:
     """
@@ -122,13 +122,22 @@ def annotate_activity_cliff_molecules(
         ❌ WRONG: pIC50, pKi, pEC50, pKd (log scale)
     similarity_matrix_filename : str
         Filename of the precomputed similarity matrix (from compute_similarity_matrix).
+        
+        Common similarity metrics for activity cliffs:
+        - 'tanimoto': Most popular, emphasizes common features (recommended on ECFPs of scaffolds or full molecules)
+        - 'edit_distance': String-based SMILES similarity (fast, no fingerprints)
+        - 'cosine': Good for count-based fingerprints
+        
+        Note: Typically use Tanimoto similarity with Morgan/ECFP fingerprints for
+        activity cliff analysis. The similarity_threshold (default 0.8) defines
+        what "structurally similar" means.
     output_filename : str
         Name for the output dataset (will be versioned with unique ID).
     explanation : str
         Human-readable description of this operation.
-    similarity_threshold : float, default=0.9
-        Minimum Tanimoto similarity for molecules to be considered structurally similar.
-        Typical range: 0.85-0.95
+    similarity_threshold : float, default=0.8
+        Minimum similarity for molecules to be considered structurally similar.
+        Typical range: 0.85-0.95 for Tanimoto similarity
     fold_difference_threshold : float, default=10.0
         Minimum fold-difference in activity to be considered an activity cliff.
         For LINEAR SCALE: fold = max(IC50_i, IC50_j) / min(IC50_i, IC50_j)
@@ -167,7 +176,7 @@ def annotate_activity_cliff_molecules(
     ...     'IC50_nM',  # LINEAR SCALE!
     ...     'similarity_matrix.joblib',
     ...     'annotated_dataset',
-    ...     similarity_threshold=0.9,
+    ...     similarity_threshold=0.8,
     ...     fold_difference_threshold=10.0
     ... )
     >>> print(result['summary'])

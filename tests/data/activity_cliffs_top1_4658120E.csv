@@ -1,0 +1,2 @@
+molecule_i_index,molecule_j_index,smiles_i,smiles_j,activity_i,activity_j,similarity,fold_difference,activity_delta
+0,2,CCO,CCC(=O)O,100.0,1.0,0.91,100.0,99.0

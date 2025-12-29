@@ -1,0 +1,10 @@
+SMILES,activity,merge_strategy
+CCO,1,drop
+CCO,1,drop
+CCO,0,drop
+CCC,1,drop
+CCC,0,drop
+CCCC,1,unique
+CCCCC,1,unique
+CCCCCC,1,keep_first
+CCCCCC,1,keep_first

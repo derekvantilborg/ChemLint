@@ -1,0 +1,7 @@
+smiles,id,name,MolWt,MolLogP,NumRotatableBonds,RingCount,NumAromaticRings,TotalRings
+CC(C)Cc1ccc(cc1)C(C)C(=O)O,1,ibuprofen,206.28499999999997,3.073200000000001,4,1,1,1
+CN1C=NC2=C1C(=O)N(C(=O)N2C)C,2,caffeine,194.194,-1.0293,0,2,2,2
+CC(C)(C)c1ccc(O)cc1,5,bht,150.22099999999998,2.689700000000001,0,1,1,1
+CC(=O)Oc1ccccc1C(=O)O,8,aspirin,180.15899999999996,1.3101,2,1,1,1
+c1ccc2c(c1)ccc3c2cccc3,10,anthracene,178.23399999999998,3.993000000000002,0,3,3,3
+CC(C)NCC(COc1ccccc1)O,11,propranolol,209.28900000000002,1.4242999999999997,6,1,1,1

@@ -1,0 +1,13 @@
+smiles,name
+CCO,mol_0
+CC(C)O,mol_1
+CCCO,mol_2
+c1ccccc1,mol_3
+c1ccccc1C,mol_4
+c1ccccc1CC,mol_5
+CC(=O)C,mol_6
+CC(=O)O,mol_7
+CC(=O)OC,mol_8
+CCN,mol_9
+c1ccncc1,mol_10
+c1cncnc1,mol_11
