@@ -2097,37 +2097,132 @@ def analyze_split_quality(
 # ============================================================================
 
 def generate_split_quality_text_report(
-    json_report_filename: str,
+    train_path: str,
+    test_path: str,
+    val_path: Optional[str],
     project_manifest_path: str,
+    smiles_col: str,
+    label_col: str,
     output_filename: str,
-    explanation: str = "Data splitting quality text report"
+    explanation: str = "Data splitting quality text report",
+    # Parameters for quality analysis
+    min_split_size: int = 50,
+    imbalance_threshold: float = 0.1,
+    similarity_threshold: float = 0.9,
+    activity_cliff_similarity: float = 0.8,
+    activity_cliff_fold_diff: float = 10.0,
+    alpha: float = 0.05,
+    min_occurrence_threshold: int = 2,
+    max_examples: int = 10
 ) -> Dict:
     """
-    Generate a human-readable text report from a JSON quality analysis.
+    **PRIMARY TOOL**: Comprehensive train/test/val split quality analysis for molecular ML datasets.
     
-    Takes the JSON output from analyze_split_quality() and creates a formatted
-    text report suitable for reading, sharing, or documentation.
+    Use this tool to evaluate data splitting quality and detect data leakage issues that could
+    inflate model performance. This is an end-to-end analysis tool - just provide your split
+    files and get both detailed JSON results and a human-readable text report.
+    
+    **When to use this tool:**
+    - Validating train/test/val splits before model training
+    - Investigating suspected data leakage or performance inflation
+    - Ensuring proper data splitting for molecular machine learning
+    - Auditing dataset quality for publications or production models
+    
+    **What this tool detects:**
+    - 🔴 CRITICAL: Exact duplicate molecules across splits (data leakage)
+    - ⚠️ HIGH: Highly similar molecules between train/test (>0.9 Tanimoto similarity)
+    - ⚠️ HIGH: Activity cliffs (similar structures, different labels)
+    - ⚠️ MEDIUM: Scaffold overlap between splits
+    - ⚠️ MEDIUM: Stereoisomers and tautomers across splits
+    - ⚠️ MEDIUM: Biased physicochemical property distributions
+    - ⚠️ MEDIUM: Biased activity/label distributions
+    - ⚠️ LOW: Unique functional groups in test/val sets
+    
+    **Outputs:**
+    - Human-readable text report (.txt) with severity indicators and recommendations
+    - Detailed JSON report (.json) with all numerical results for programmatic access
+    - Overall severity assessment (OK/LOW/MEDIUM/HIGH/CRITICAL)
+    - Actionable insights for each issue detected
     
     Parameters
     ----------
-    json_report_filename : str
-        Filename of the JSON report resource (from analyze_split_quality)
+    train_path : str
+        Filename of training split resource
+    test_path : str
+        Filename of test split resource
+    val_path : Optional[str]
+        Filename of validation split resource (if exists)
     project_manifest_path : str
         Path to manifest.json
+    smiles_col : str
+        Name of SMILES column
+    label_col : str
+        Name of label column
     output_filename : str
-        Output filename prefix for the text report (e.g., "split_quality_report_text")
+        Output filename prefix for the text report (e.g., "split_quality_report")
     explanation : str
         Human-readable description of this report
+    min_split_size : int
+        Minimum acceptable split size (default: 50)
+    imbalance_threshold : float
+        Threshold for class imbalance (default: 0.1)
+    similarity_threshold : float
+        Tanimoto similarity threshold for leakage (default: 0.9)
+    activity_cliff_similarity : float
+        Similarity threshold for activity cliffs (default: 0.8)
+    activity_cliff_fold_diff : float
+        Fold difference for regression activity cliffs (default: 10.0)
+    alpha : float
+        Significance level for statistical tests (default: 0.05)
+    min_occurrence_threshold : int
+        Minimum functional group occurrences to flag (default: 2)
+    max_examples : int
+        Maximum examples to include per issue (default: 10)
         
     Returns
     -------
     Dict with:
         - output_filename: saved text report filename
-        - n_lines: number of lines in report
+        - json_report_filename: saved JSON report filename
+        - n_lines: number of lines in text report
         - overall_severity: highest severity found
         - report_sections: list of section names included
+        - issues_found: summary of key issues detected
     """
     from molml_mcp.infrastructure.resources import _load_resource, _store_resource
+    
+    # Step 1: Run comprehensive quality analysis
+    print("\n" + "="*80)
+    print("COMPREHENSIVE DATA SPLITTING QUALITY ANALYSIS")
+    print("="*80)
+    
+    json_result = analyze_split_quality(
+        train_path=train_path,
+        test_path=test_path,
+        val_path=val_path,
+        project_manifest_path=project_manifest_path,
+        smiles_col=smiles_col,
+        label_col=label_col,
+        output_filename=f"{output_filename}_json",
+        explanation=f"JSON analysis for {explanation}",
+        min_split_size=min_split_size,
+        imbalance_threshold=imbalance_threshold,
+        similarity_threshold=similarity_threshold,
+        activity_cliff_similarity=activity_cliff_similarity,
+        activity_cliff_fold_diff=activity_cliff_fold_diff,
+        alpha=alpha,
+        min_occurrence_threshold=min_occurrence_threshold,
+        max_examples=max_examples
+    )
+    
+    json_report_filename = json_result['output_filename']
+    
+    print(f"\n✓ Quality analysis complete")
+    print(f"  Overall Severity: {json_result['overall_severity']}")
+    print(f"  JSON Report: {json_report_filename}")
+    
+    # Step 2: Load the JSON report and generate text report
+    print(f"\nGenerating human-readable text report...")
     
     # Load JSON report
     report = _load_resource(project_manifest_path, json_report_filename)
@@ -2493,8 +2588,14 @@ def generate_split_quality_text_report(
         'txt'
     )
     
+    print(f"✓ Text report generated: {output_file}")
+    print(f"  Lines: {len(lines)}")
+    print(f"  Sections: {len(['metadata', 'overall_assessment', 'split_characteristics', 'exact_duplicates', 'similarity_leakage', 'scaffold_overlap', 'stereoisomer_tautomer', 'property_distributions', 'activity_distributions', 'functional_groups'])}")
+    print("="*80 + "\n")
+    
     return {
         'output_filename': output_file,
+        'json_report_filename': json_report_filename,
         'n_lines': len(lines),
         'overall_severity': overall_severity,
         'report_sections': [
@@ -2508,5 +2609,6 @@ def generate_split_quality_text_report(
             'property_distributions',
             'activity_distributions',
             'functional_groups'
-        ]
+        ],
+        'issues_found': json_result['issues_found']
     }

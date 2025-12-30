@@ -13,10 +13,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from molml_mcp.infrastructure.resources import _store_resource, _load_resource
-from molml_mcp.tools.reports.data_splitting import (
-    analyze_split_quality,
-    generate_split_quality_text_report
-)
+from molml_mcp.tools.reports.data_splitting import generate_split_quality_text_report
 
 
 @pytest.fixture
@@ -30,7 +27,7 @@ def temp_manifest():
 
 
 def test_basic_text_report_generation(temp_manifest):
-    """Test basic text report generation from JSON."""
+    """Test basic text report generation from datasets."""
     # Create small train/test datasets
     train_smiles = ['c1ccccc1', 'CCO', 'CC(=O)C', 'CCN', 'CCC']
     train_labels = [0, 1, 0, 1, 0]
@@ -44,36 +41,29 @@ def test_basic_text_report_generation(temp_manifest):
     train_file = _store_resource(train_df, temp_manifest, "train", "Train set", "csv")
     test_file = _store_resource(test_df, temp_manifest, "test", "Test set", "csv")
     
-    # Generate JSON report
-    json_result = analyze_split_quality(
+    # Generate text report directly from datasets
+    result = generate_split_quality_text_report(
         train_path=train_file,
         test_path=test_file,
         val_path=None,
         project_manifest_path=temp_manifest,
         smiles_col='smiles',
         label_col='label',
-        output_filename='quality_report',
-        explanation="Test quality analysis"
-    )
-    
-    json_filename = json_result['output_filename']
-    
-    # Generate text report
-    text_result = generate_split_quality_text_report(
-        json_report_filename=json_filename,
-        project_manifest_path=temp_manifest,
         output_filename='quality_report_text',
         explanation="Test text report"
     )
     
     # Validate return structure
-    assert 'output_filename' in text_result
-    assert 'n_lines' in text_result
-    assert 'overall_severity' in text_result
-    assert 'report_sections' in text_result
-    assert text_result['output_filename'].endswith('.txt')
-    assert text_result['n_lines'] > 50  # Should have substantial content
-    assert len(text_result['report_sections']) == 10  # 10 sections
+    assert 'output_filename' in result
+    assert 'json_report_filename' in result
+    assert 'n_lines' in result
+    assert 'overall_severity' in result
+    assert 'report_sections' in result
+    assert 'issues_found' in result
+    assert result['output_filename'].endswith('.txt')
+    assert result['json_report_filename'].endswith('.json')
+    assert result['n_lines'] > 50  # Should have substantial content
+    assert len(result['report_sections']) == 10  # 10 sections
 
 
 def test_text_report_content_structure(temp_manifest):
@@ -91,21 +81,14 @@ def test_text_report_content_structure(temp_manifest):
     train_file = _store_resource(train_df, temp_manifest, "train", "Train", "csv")
     test_file = _store_resource(test_df, temp_manifest, "test", "Test", "csv")
     
-    # Generate JSON
-    json_result = analyze_split_quality(
+    # Generate text report
+    text_result = generate_split_quality_text_report(
         train_path=train_file,
         test_path=test_file,
         val_path=None,
         project_manifest_path=temp_manifest,
         smiles_col='smiles',
         label_col='label',
-        output_filename='quality_report'
-    )
-    
-    # Generate text
-    text_result = generate_split_quality_text_report(
-        json_report_filename=json_result['output_filename'],
-        project_manifest_path=temp_manifest,
         output_filename='quality_report_text'
     )
     
@@ -134,19 +117,13 @@ def test_text_report_metadata_section(temp_manifest):
     train_file = _store_resource(train_df, temp_manifest, "train", "Train", "csv")
     test_file = _store_resource(test_df, temp_manifest, "test", "Test", "csv")
     
-    json_result = analyze_split_quality(
+    text_result = generate_split_quality_text_report(
         train_path=train_file,
         test_path=test_file,
         val_path=None,
         project_manifest_path=temp_manifest,
         smiles_col='smiles',
         label_col='label',
-        output_filename='report'
-    )
-    
-    text_result = generate_split_quality_text_report(
-        json_report_filename=json_result['output_filename'],
-        project_manifest_path=temp_manifest,
         output_filename='report_text'
     )
     
@@ -169,19 +146,13 @@ def test_text_report_severity_indicators(temp_manifest):
     train_file = _store_resource(train_df, temp_manifest, "train", "Train", "csv")
     test_file = _store_resource(test_df, temp_manifest, "test", "Test", "csv")
     
-    json_result = analyze_split_quality(
+    text_result = generate_split_quality_text_report(
         train_path=train_file,
         test_path=test_file,
         val_path=None,
         project_manifest_path=temp_manifest,
         smiles_col='smiles',
         label_col='label',
-        output_filename='report'
-    )
-    
-    text_result = generate_split_quality_text_report(
-        json_report_filename=json_result['output_filename'],
-        project_manifest_path=temp_manifest,
         output_filename='report_text'
     )
     
@@ -212,19 +183,13 @@ def test_text_report_with_critical_issues(temp_manifest):
     train_file = _store_resource(train_df, temp_manifest, "train", "Train", "csv")
     test_file = _store_resource(test_df, temp_manifest, "test", "Test", "csv")
     
-    json_result = analyze_split_quality(
+    text_result = generate_split_quality_text_report(
         train_path=train_file,
         test_path=test_file,
         val_path=None,
         project_manifest_path=temp_manifest,
         smiles_col='smiles',
         label_col='label',
-        output_filename='critical_report'
-    )
-    
-    text_result = generate_split_quality_text_report(
-        json_report_filename=json_result['output_filename'],
-        project_manifest_path=temp_manifest,
         output_filename='critical_report_text'
     )
     
@@ -247,19 +212,13 @@ def test_text_report_with_validation_set(temp_manifest):
     test_file = _store_resource(test_df, temp_manifest, "test", "Test", "csv")
     val_file = _store_resource(val_df, temp_manifest, "val", "Val", "csv")
     
-    json_result = analyze_split_quality(
+    text_result = generate_split_quality_text_report(
         train_path=train_file,
         test_path=test_file,
         val_path=val_file,
         project_manifest_path=temp_manifest,
         smiles_col='smiles',
         label_col='label',
-        output_filename='three_way_report'
-    )
-    
-    text_result = generate_split_quality_text_report(
-        json_report_filename=json_result['output_filename'],
-        project_manifest_path=temp_manifest,
         output_filename='three_way_report_text'
     )
     
@@ -283,19 +242,13 @@ def test_text_report_split_characteristics_section(temp_manifest):
     train_file = _store_resource(train_df, temp_manifest, "train", "Train", "csv")
     test_file = _store_resource(test_df, temp_manifest, "test", "Test", "csv")
     
-    json_result = analyze_split_quality(
+    text_result = generate_split_quality_text_report(
         train_path=train_file,
         test_path=test_file,
         val_path=None,
         project_manifest_path=temp_manifest,
         smiles_col='smiles',
         label_col='label',
-        output_filename='split_char_report'
-    )
-    
-    text_result = generate_split_quality_text_report(
-        json_report_filename=json_result['output_filename'],
-        project_manifest_path=temp_manifest,
         output_filename='split_char_report_text'
     )
     
@@ -316,19 +269,13 @@ def test_text_report_readable_format(temp_manifest):
     train_file = _store_resource(train_df, temp_manifest, "train", "Train", "csv")
     test_file = _store_resource(test_df, temp_manifest, "test", "Test", "csv")
     
-    json_result = analyze_split_quality(
+    text_result = generate_split_quality_text_report(
         train_path=train_file,
         test_path=test_file,
         val_path=None,
         project_manifest_path=temp_manifest,
         smiles_col='smiles',
         label_col='label',
-        output_filename='readable_report'
-    )
-    
-    text_result = generate_split_quality_text_report(
-        json_report_filename=json_result['output_filename'],
-        project_manifest_path=temp_manifest,
         output_filename='readable_report_text'
     )
     
@@ -350,19 +297,13 @@ def test_text_report_captures_all_checks(temp_manifest):
     train_file = _store_resource(train_df, temp_manifest, "train", "Train", "csv")
     test_file = _store_resource(test_df, temp_manifest, "test", "Test", "csv")
     
-    json_result = analyze_split_quality(
+    text_result = generate_split_quality_text_report(
         train_path=train_file,
         test_path=test_file,
         val_path=None,
         project_manifest_path=temp_manifest,
         smiles_col='smiles',
         label_col='label',
-        output_filename='all_checks_report'
-    )
-    
-    text_result = generate_split_quality_text_report(
-        json_report_filename=json_result['output_filename'],
-        project_manifest_path=temp_manifest,
         output_filename='all_checks_report_text'
     )
     

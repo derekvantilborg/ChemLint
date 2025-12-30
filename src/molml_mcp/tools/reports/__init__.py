@@ -4,6 +4,7 @@ Report generation tools for molecular datasets.
 
 from molml_mcp.tools.reports.scaffold_report import generate_scaffold_report
 from molml_mcp.tools.reports.quality import generate_quality_report
+from molml_mcp.tools.reports.data_splitting import generate_split_quality_text_report
 
 
 def get_all_report_tools():
@@ -13,11 +14,13 @@ def get_all_report_tools():
     return [
         generate_scaffold_report,
         generate_quality_report,
+        generate_split_quality_text_report,
     ]
 
 
 __all__ = [
     "generate_scaffold_report",
     "generate_quality_report",
+    "generate_split_quality_text_report",
     "get_all_report_tools",
 ]
