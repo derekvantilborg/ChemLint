@@ -291,7 +291,7 @@ def generate_quality_report(
     project_manifest_path: str,
     smiles_col: str = 'SMILES',
     activity_col: Optional[str] = None,
-    activity_type: str = 'continuous',
+    activity_type: Optional[str] = None,
     activity_units: str = 'nM',
     output_name: str = 'quality_report',
     explanation: str = 'Generated comprehensive data quality report'
@@ -326,8 +326,9 @@ def generate_quality_report(
         Column containing SMILES strings
     activity_col : str, optional
         Column containing bioactivity values (optional)
-    activity_type : str, default='continuous'
-        Type of activity data: 'continuous' or 'classification'
+    activity_type : str, optional
+        Type of activity data: 'classification' or 'regression'.
+        Required if activity_col is provided.
     activity_units : str, default='nM'
         Units for continuous activity data (e.g., 'nM', 'μM')
     output_name : str, default='quality_report'
@@ -347,6 +348,17 @@ def generate_quality_report(
             'key_metrics': dict,  # Dictionary of key quality metrics
         }
     """
+    # Validate inputs
+    if activity_col is not None and activity_type is None:
+        raise ValueError(
+            "activity_type must be specified when activity_col is provided. "
+            "Valid options: 'classification' or 'regression'"
+        )
+    if activity_type is not None and activity_type not in ['classification', 'regression']:
+        raise ValueError(
+            f"activity_type must be 'classification' or 'regression', got '{activity_type}'"
+        )
+    
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
     
