@@ -304,7 +304,7 @@ def test_default_SMILES_standardization_pipeline_dataset_with_dummy_data(session
     manifest_path = str(session_workdir / "test_manifest.json")
     
     # Load dummy_cleaning.csv - navigate up from tests/tools/core/cleaning/ to tests/
-    dummy_path = Path(__file__).parent.parent.parent.parent / "data" / "dummy_cleaning.csv"
+    dummy_path = Path(__file__).parent.parent.parent.parent / "tests" / "data" / "dummy_cleaning.csv"
     df = pd.read_csv(dummy_path)
     
     input_filename = _store_resource(df, manifest_path, "dummy_input", "Dummy cleaning data", "csv")
