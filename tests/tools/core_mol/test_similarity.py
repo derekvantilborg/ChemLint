@@ -12,6 +12,7 @@ from molml_mcp.tools.core_mol.similarity import (
     compute_similarity_matrix,
     find_k_nearest_neighbors,
     add_similarity_statistics_dataset,
+    add_training_set_similarity_statistics,
 )
 from molml_mcp.infrastructure.resources import _store_resource, _load_resource
 
@@ -426,3 +427,417 @@ def test_add_similarity_statistics_dataset(session_workdir):
     assert list(df_out['smiles']) == ['CCO', 'CCC']
     assert list(df_out['label']) == [1, 0]
     assert list(df_out['property']) == [10.5, 20.3]
+
+
+def test_add_training_set_similarity_statistics_basic(session_workdir):
+    """Test add_training_set_similarity_statistics with basic functionality."""
+    manifest_path = session_workdir / "test_manifest.json"
+    
+    # Create test dataset
+    test_df = pd.DataFrame({
+        'smiles': ['CCO', 'CCCO', 'CCCCO'],
+        'label': [1, 0, 1]
+    })
+    test_input_filename = _store_resource(test_df, str(manifest_path), 'test_mols', 'Test molecules', 'csv')
+    
+    # Create training dataset
+    train_df = pd.DataFrame({
+        'smiles': ['CC', 'CCC', 'CCCC', 'CCCCC'],
+        'label': [0, 1, 0, 1]
+    })
+    train_input_filename = _store_resource(train_df, str(manifest_path), 'train_mols', 'Training molecules', 'csv')
+    
+    # Create test fingerprints
+    test_fingerprints = {
+        'CCO': np.array([1, 0, 1, 0, 0]),
+        'CCCO': np.array([1, 1, 1, 0, 0]),
+        'CCCCO': np.array([1, 1, 1, 1, 0])
+    }
+    test_fp_filename = _store_resource(test_fingerprints, str(manifest_path), 'test_fps', 'Test FPs', 'joblib')
+    
+    # Create training fingerprints
+    train_fingerprints = {
+        'CC': np.array([1, 0, 0, 0, 0]),
+        'CCC': np.array([1, 1, 0, 0, 0]),
+        'CCCC': np.array([1, 1, 1, 0, 0]),
+        'CCCCC': np.array([1, 1, 1, 1, 0])
+    }
+    train_fp_filename = _store_resource(train_fingerprints, str(manifest_path), 'train_fps', 'Train FPs', 'joblib')
+    
+    result = add_training_set_similarity_statistics(
+        test_input_filename=test_input_filename,
+        train_input_filename=train_input_filename,
+        project_manifest_path=str(manifest_path),
+        test_smiles_column='smiles',
+        train_smiles_column='smiles',
+        test_feature_vectors_filename=test_fp_filename,
+        train_feature_vectors_filename=train_fp_filename,
+        output_filename='test_with_train_sim',
+        explanation='Test-train similarity statistics',
+        similarity_metric='tanimoto',
+        k_nearest=3
+    )
+    
+    # Check return structure
+    assert result['n_test_molecules'] == 3
+    assert result['n_train_molecules'] == 4
+    assert result['similarity_metric'] == 'tanimoto'
+    assert result['k_nearest'] == 3
+    assert 0.0 <= result['test_mean_similarity_to_train'] <= 1.0
+    assert 0.0 <= result['test_median_similarity_to_train'] <= 1.0
+    
+    expected_new_columns = [
+        'mean_similarity_to_train',
+        'median_similarity_to_train',
+        'max_similarity_to_train',
+        'min_similarity_to_train',
+        'mean_top_3_similarity_to_train',
+        'nearest_train_smiles',
+        'nearest_train_similarity'
+    ]
+    assert result['new_columns'] == expected_new_columns
+    
+    # Load and verify output
+    df_out = _load_resource(str(manifest_path), result['output_filename'])
+    assert df_out.shape == (3, 9)  # 2 original + 7 new
+    
+    for col in expected_new_columns:
+        assert col in df_out.columns
+    
+    # Verify statistics in valid ranges
+    assert all(0.0 <= v <= 1.0 for v in df_out['mean_similarity_to_train'])
+    assert all(0.0 <= v <= 1.0 for v in df_out['max_similarity_to_train'])
+    assert all(0.0 <= v <= 1.0 for v in df_out['nearest_train_similarity'])
+    
+    # Verify nearest_train_smiles are from training set
+    assert all(smi in train_df['smiles'].values for smi in df_out['nearest_train_smiles'])
+    
+    # Original columns preserved
+    assert list(df_out['smiles']) == ['CCO', 'CCCO', 'CCCCO']
+    assert list(df_out['label']) == [1, 0, 1]
+
+
+def test_add_training_set_similarity_statistics_different_metrics(session_workdir):
+    """Test add_training_set_similarity_statistics with different similarity metrics."""
+    manifest_path = session_workdir / "test_manifest.json"
+    
+    # Create datasets
+    test_df = pd.DataFrame({'smiles': ['CCO', 'CCCO']})
+    train_df = pd.DataFrame({'smiles': ['CC', 'CCC']})
+    
+    test_input_filename = _store_resource(test_df, str(manifest_path), 'test_mols', 'Test', 'csv')
+    train_input_filename = _store_resource(train_df, str(manifest_path), 'train_mols', 'Train', 'csv')
+    
+    # Create fingerprints
+    test_fps = {
+        'CCO': np.array([1.0, 2.0, 3.0]),
+        'CCCO': np.array([2.0, 3.0, 4.0])
+    }
+    train_fps = {
+        'CC': np.array([0.5, 1.0, 1.5]),
+        'CCC': np.array([1.5, 2.5, 3.5])
+    }
+    
+    test_fp_filename = _store_resource(test_fps, str(manifest_path), 'test_fps', 'Test FPs', 'joblib')
+    train_fp_filename = _store_resource(train_fps, str(manifest_path), 'train_fps', 'Train FPs', 'joblib')
+    
+    # Test different metrics
+    for metric in ['dice', 'cosine', 'euclidean', 'manhattan']:
+        result = add_training_set_similarity_statistics(
+            test_input_filename=test_input_filename,
+            train_input_filename=train_input_filename,
+            project_manifest_path=str(manifest_path),
+            test_smiles_column='smiles',
+            train_smiles_column='smiles',
+            test_feature_vectors_filename=test_fp_filename,
+            train_feature_vectors_filename=train_fp_filename,
+            output_filename=f'test_train_sim_{metric}',
+            explanation=f'Test {metric}',
+            similarity_metric=metric,
+            k_nearest=2
+        )
+        
+        assert result['similarity_metric'] == metric
+        assert result['n_test_molecules'] == 2
+        assert result['n_train_molecules'] == 2
+        
+        df_out = _load_resource(str(manifest_path), result['output_filename'])
+        assert 'mean_similarity_to_train' in df_out.columns
+        assert 'max_similarity_to_train' in df_out.columns
+
+
+def test_add_training_set_similarity_statistics_k_nearest(session_workdir):
+    """Test k_nearest parameter variations."""
+    manifest_path = session_workdir / "test_manifest.json"
+    
+    # Create datasets
+    test_df = pd.DataFrame({'smiles': ['CCO']})
+    train_df = pd.DataFrame({'smiles': ['CC', 'CCC', 'CCCC', 'CCCCC', 'CCCCCC']})
+    
+    test_input_filename = _store_resource(test_df, str(manifest_path), 'test_mols', 'Test', 'csv')
+    train_input_filename = _store_resource(train_df, str(manifest_path), 'train_mols', 'Train', 'csv')
+    
+    # Create fingerprints
+    test_fps = {'CCO': np.array([1, 0, 1, 0, 0])}
+    train_fps = {
+        'CC': np.array([1, 0, 0, 0, 0]),
+        'CCC': np.array([1, 1, 0, 0, 0]),
+        'CCCC': np.array([1, 1, 1, 0, 0]),
+        'CCCCC': np.array([1, 1, 1, 1, 0]),
+        'CCCCCC': np.array([1, 1, 1, 1, 1])
+    }
+    
+    test_fp_filename = _store_resource(test_fps, str(manifest_path), 'test_fps', 'Test FPs', 'joblib')
+    train_fp_filename = _store_resource(train_fps, str(manifest_path), 'train_fps', 'Train FPs', 'joblib')
+    
+    # Test with k=1
+    result = add_training_set_similarity_statistics(
+        test_input_filename=test_input_filename,
+        train_input_filename=train_input_filename,
+        project_manifest_path=str(manifest_path),
+        test_smiles_column='smiles',
+        train_smiles_column='smiles',
+        test_feature_vectors_filename=test_fp_filename,
+        train_feature_vectors_filename=train_fp_filename,
+        output_filename='test_train_k1',
+        explanation='k=1 test',
+        similarity_metric='tanimoto',
+        k_nearest=1
+    )
+    
+    assert result['k_nearest'] == 1
+    assert 'mean_top_1_similarity_to_train' in result['new_columns']
+    
+    df_out = _load_resource(str(manifest_path), result['output_filename'])
+    assert 'mean_top_1_similarity_to_train' in df_out.columns
+    # mean_top_1 should equal max_similarity
+    assert abs(df_out['mean_top_1_similarity_to_train'][0] - df_out['max_similarity_to_train'][0]) < 0.001
+    
+    # Test with k=5
+    result = add_training_set_similarity_statistics(
+        test_input_filename=test_input_filename,
+        train_input_filename=train_input_filename,
+        project_manifest_path=str(manifest_path),
+        test_smiles_column='smiles',
+        train_smiles_column='smiles',
+        test_feature_vectors_filename=test_fp_filename,
+        train_feature_vectors_filename=train_fp_filename,
+        output_filename='test_train_k5',
+        explanation='k=5 test',
+        similarity_metric='tanimoto',
+        k_nearest=5
+    )
+    
+    assert result['k_nearest'] == 5
+    assert 'mean_top_5_similarity_to_train' in result['new_columns']
+
+
+def test_add_training_set_similarity_statistics_novelty_detection(session_workdir):
+    """Test novelty detection with n_test_below_threshold metric."""
+    manifest_path = session_workdir / "test_manifest.json"
+    
+    # Create test dataset with diverse molecules
+    test_df = pd.DataFrame({
+        'smiles': ['CCO', 'c1ccccc1', 'CC(C)C']  # Alcohol, benzene, branched alkane
+    })
+    test_input_filename = _store_resource(test_df, str(manifest_path), 'test_mols', 'Test', 'csv')
+    
+    # Create training dataset with only simple alcohols
+    train_df = pd.DataFrame({
+        'smiles': ['CO', 'CCO', 'CCCO']
+    })
+    train_input_filename = _store_resource(train_df, str(manifest_path), 'train_mols', 'Train', 'csv')
+    
+    # Create fingerprints (benzene very different from alcohols)
+    test_fps = {
+        'CCO': np.array([1, 1, 0, 0, 0]),       # Similar to training
+        'c1ccccc1': np.array([0, 0, 1, 1, 1]),  # Very different
+        'CC(C)C': np.array([1, 0, 0, 0, 0])     # Somewhat similar
+    }
+    train_fps = {
+        'CO': np.array([1, 0, 0, 0, 0]),
+        'CCO': np.array([1, 1, 0, 0, 0]),
+        'CCCO': np.array([1, 1, 1, 0, 0])
+    }
+    
+    test_fp_filename = _store_resource(test_fps, str(manifest_path), 'test_fps', 'Test FPs', 'joblib')
+    train_fp_filename = _store_resource(train_fps, str(manifest_path), 'train_fps', 'Train FPs', 'joblib')
+    
+    result = add_training_set_similarity_statistics(
+        test_input_filename=test_input_filename,
+        train_input_filename=train_input_filename,
+        project_manifest_path=str(manifest_path),
+        test_smiles_column='smiles',
+        train_smiles_column='smiles',
+        test_feature_vectors_filename=test_fp_filename,
+        train_feature_vectors_filename=train_fp_filename,
+        output_filename='novelty_test',
+        explanation='Novelty detection test',
+        similarity_metric='tanimoto',
+        k_nearest=2
+    )
+    
+    # Check novelty metric
+    assert 'n_test_below_threshold' in result
+    assert result['n_test_below_threshold'] >= 0
+    assert result['n_test_below_threshold'] <= 3
+    
+    df_out = _load_resource(str(manifest_path), result['output_filename'])
+    
+    # Benzene should have low similarity to alcohol training set
+    benzene_row = df_out[df_out['smiles'] == 'c1ccccc1'].iloc[0]
+    assert benzene_row['max_similarity_to_train'] < 0.5
+    
+    # CCO should have high similarity (it's in training set)
+    cco_row = df_out[df_out['smiles'] == 'CCO'].iloc[0]
+    assert cco_row['max_similarity_to_train'] > 0.7
+
+
+def test_add_training_set_similarity_statistics_error_cases(session_workdir):
+    """Test error handling in add_training_set_similarity_statistics."""
+    manifest_path = session_workdir / "test_manifest.json"
+    
+    # Create basic datasets
+    test_df = pd.DataFrame({'smiles': ['CCO', 'CCC']})
+    train_df = pd.DataFrame({'smiles': ['CC', 'CCCC']})
+    
+    test_input_filename = _store_resource(test_df, str(manifest_path), 'test_mols', 'Test', 'csv')
+    train_input_filename = _store_resource(train_df, str(manifest_path), 'train_mols', 'Train', 'csv')
+    
+    test_fps = {'CCO': np.array([1, 0, 1]), 'CCC': np.array([1, 1, 0])}
+    train_fps = {'CC': np.array([1, 0, 0]), 'CCCC': np.array([1, 1, 1])}
+    
+    test_fp_filename = _store_resource(test_fps, str(manifest_path), 'test_fps', 'Test FPs', 'joblib')
+    train_fp_filename = _store_resource(train_fps, str(manifest_path), 'train_fps', 'Train FPs', 'joblib')
+    
+    # Test k_nearest > n_train
+    with pytest.raises(ValueError, match="k_nearest=10 is larger than number of training molecules"):
+        add_training_set_similarity_statistics(
+            test_input_filename=test_input_filename,
+            train_input_filename=train_input_filename,
+            project_manifest_path=str(manifest_path),
+            test_smiles_column='smiles',
+            train_smiles_column='smiles',
+            test_feature_vectors_filename=test_fp_filename,
+            train_feature_vectors_filename=train_fp_filename,
+            output_filename='error_test',
+            explanation='Error test',
+            similarity_metric='tanimoto',
+            k_nearest=10
+        )
+    
+    # Test missing test feature vectors
+    test_df_incomplete = pd.DataFrame({'smiles': ['CCO', 'CCC', 'CCCC']})
+    test_input_incomplete = _store_resource(test_df_incomplete, str(manifest_path), 'test_incomplete', 'Incomplete', 'csv')
+    
+    with pytest.raises(ValueError, match="Test feature vectors missing"):
+        add_training_set_similarity_statistics(
+            test_input_filename=test_input_incomplete,
+            train_input_filename=train_input_filename,
+            project_manifest_path=str(manifest_path),
+            test_smiles_column='smiles',
+            train_smiles_column='smiles',
+            test_feature_vectors_filename=test_fp_filename,  # Missing CCCC
+            train_feature_vectors_filename=train_fp_filename,
+            output_filename='error_test2',
+            explanation='Error test 2',
+            similarity_metric='tanimoto',
+            k_nearest=2
+        )
+    
+    # Test missing training feature vectors
+    train_df_incomplete = pd.DataFrame({'smiles': ['CC', 'CCCC', 'CCCCC']})
+    train_input_incomplete = _store_resource(train_df_incomplete, str(manifest_path), 'train_incomplete', 'Incomplete', 'csv')
+    
+    with pytest.raises(ValueError, match="Training feature vectors missing"):
+        add_training_set_similarity_statistics(
+            test_input_filename=test_input_filename,
+            train_input_filename=train_input_incomplete,
+            project_manifest_path=str(manifest_path),
+            test_smiles_column='smiles',
+            train_smiles_column='smiles',
+            test_feature_vectors_filename=test_fp_filename,
+            train_feature_vectors_filename=train_fp_filename,  # Missing CCCCC
+            output_filename='error_test3',
+            explanation='Error test 3',
+            similarity_metric='tanimoto',
+            k_nearest=2
+        )
+    
+    # Test invalid similarity metric
+    with pytest.raises(ValueError, match="Unsupported similarity metric"):
+        add_training_set_similarity_statistics(
+            test_input_filename=test_input_filename,
+            train_input_filename=train_input_filename,
+            project_manifest_path=str(manifest_path),
+            test_smiles_column='smiles',
+            train_smiles_column='smiles',
+            test_feature_vectors_filename=test_fp_filename,
+            train_feature_vectors_filename=train_fp_filename,
+            output_filename='error_test4',
+            explanation='Error test 4',
+            similarity_metric='invalid_metric',
+            k_nearest=2
+        )
+    
+    # Test wrong column name
+    with pytest.raises(ValueError, match="not found in test dataset"):
+        add_training_set_similarity_statistics(
+            test_input_filename=test_input_filename,
+            train_input_filename=train_input_filename,
+            project_manifest_path=str(manifest_path),
+            test_smiles_column='wrong_column',
+            train_smiles_column='smiles',
+            test_feature_vectors_filename=test_fp_filename,
+            train_feature_vectors_filename=train_fp_filename,
+            output_filename='error_test5',
+            explanation='Error test 5',
+            similarity_metric='tanimoto',
+            k_nearest=2
+        )
+
+
+def test_add_training_set_similarity_statistics_different_columns(session_workdir):
+    """Test with different column names for test and train."""
+    manifest_path = session_workdir / "test_manifest.json"
+    
+    # Create datasets with different column names
+    test_df = pd.DataFrame({
+        'test_smiles': ['CCO', 'CCC'],
+        'test_id': [1, 2]
+    })
+    train_df = pd.DataFrame({
+        'train_smiles': ['CC', 'CCCC'],
+        'train_id': [101, 102]
+    })
+    
+    test_input_filename = _store_resource(test_df, str(manifest_path), 'test_mols', 'Test', 'csv')
+    train_input_filename = _store_resource(train_df, str(manifest_path), 'train_mols', 'Train', 'csv')
+    
+    test_fps = {'CCO': np.array([1, 0, 1]), 'CCC': np.array([1, 1, 0])}
+    train_fps = {'CC': np.array([1, 0, 0]), 'CCCC': np.array([1, 1, 1])}
+    
+    test_fp_filename = _store_resource(test_fps, str(manifest_path), 'test_fps', 'Test FPs', 'joblib')
+    train_fp_filename = _store_resource(train_fps, str(manifest_path), 'train_fps', 'Train FPs', 'joblib')
+    
+    result = add_training_set_similarity_statistics(
+        test_input_filename=test_input_filename,
+        train_input_filename=train_input_filename,
+        project_manifest_path=str(manifest_path),
+        test_smiles_column='test_smiles',
+        train_smiles_column='train_smiles',
+        test_feature_vectors_filename=test_fp_filename,
+        train_feature_vectors_filename=train_fp_filename,
+        output_filename='different_cols',
+        explanation='Different column names',
+        similarity_metric='tanimoto',
+        k_nearest=2
+    )
+    
+    assert result['n_test_molecules'] == 2
+    assert result['n_train_molecules'] == 2
+    
+    df_out = _load_resource(str(manifest_path), result['output_filename'])
+    assert 'test_smiles' in df_out.columns
+    assert 'test_id' in df_out.columns
+    assert 'mean_similarity_to_train' in df_out.columns
