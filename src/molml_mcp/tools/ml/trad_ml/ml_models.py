@@ -45,6 +45,31 @@ from molml_mcp.tools.ml.trad_ml.singular_models import (
     _get_extra_trees_regressor_hyperparams,
     _train_sgd_regressor,
     _get_sgd_regressor_hyperparams
+)
+
+from molml_mcp.tools.ml.trad_ml.ensembled_models import (
+    _train_random_forest_classifier_w_uncertainty,
+    _get_random_forest_classifier_w_uncertainty_hyperparams,
+    _train_gradient_boosting_classifier_w_uncertainty,
+    _get_gradient_boosting_classifier_w_uncertainty_hyperparams,
+    _train_logistic_regression_w_uncertainty,
+    _get_logistic_regression_w_uncertainty_hyperparams,
+    _train_decision_tree_classifier_w_uncertainty,
+    _get_decision_tree_classifier_w_uncertainty_hyperparams,
+    _train_adaboost_classifier_w_uncertainty,
+    _get_adaboost_classifier_w_uncertainty_hyperparams,
+    _train_extra_trees_classifier_w_uncertainty,
+    _get_extra_trees_classifier_w_uncertainty_hyperparams,
+    _train_random_forest_regressor_w_uncertainty,
+    _get_random_forest_regressor_w_uncertainty_hyperparams,
+    _train_gradient_boosting_regressor_w_uncertainty,
+    _get_gradient_boosting_regressor_w_uncertainty_hyperparams,
+    _train_decision_tree_regressor_w_uncertainty,
+    _get_decision_tree_regressor_w_uncertainty_hyperparams,
+    _train_adaboost_regressor_w_uncertainty,
+    _get_adaboost_regressor_w_uncertainty_hyperparams,
+    _train_extra_trees_regressor_w_uncertainty,
+    _get_extra_trees_regressor_w_uncertainty_hyperparams,
 )   
 
 
@@ -173,6 +198,77 @@ CLASSIFICATION_MODELS = {
             "alpha": 0.0001,
             "max_iter": 1000
         }
+    },
+    # Ensemble models with uncertainty estimation
+    "random_forest_classifier_w_uncertainty": {
+        "name": "Random Forest Classifier (w/ Uncertainty)",
+        "function": _train_random_forest_classifier_w_uncertainty,
+        "hyperparams_function": _get_random_forest_classifier_w_uncertainty_hyperparams,
+        "description": "Ensemble of Random Forest classifiers providing uncertainty estimates via prediction variance.",
+        "default_params": {
+            "ensemble_size": 10,
+            "n_estimators": 100,
+            "max_depth": None,
+            "max_features": "sqrt"
+        }
+    },
+    "gradient_boosting_classifier_w_uncertainty": {
+        "name": "Gradient Boosting Classifier (w/ Uncertainty)",
+        "function": _train_gradient_boosting_classifier_w_uncertainty,
+        "hyperparams_function": _get_gradient_boosting_classifier_w_uncertainty_hyperparams,
+        "description": "Ensemble of Gradient Boosting classifiers with uncertainty quantification.",
+        "default_params": {
+            "ensemble_size": 10,
+            "n_estimators": 100,
+            "learning_rate": 0.1,
+            "max_depth": 3
+        }
+    },
+    "logistic_regression_w_uncertainty": {
+        "name": "Logistic Regression (w/ Uncertainty)",
+        "function": _train_logistic_regression_w_uncertainty,
+        "hyperparams_function": _get_logistic_regression_w_uncertainty_hyperparams,
+        "description": "Ensemble of Logistic Regression models providing uncertainty estimates.",
+        "default_params": {
+            "ensemble_size": 10,
+            "penalty": "l2",
+            "C": 1.0,
+            "max_iter": 1000
+        }
+    },
+    "decision_tree_classifier_w_uncertainty": {
+        "name": "Decision Tree Classifier (w/ Uncertainty)",
+        "function": _train_decision_tree_classifier_w_uncertainty,
+        "hyperparams_function": _get_decision_tree_classifier_w_uncertainty_hyperparams,
+        "description": "Ensemble of Decision Trees with uncertainty quantification.",
+        "default_params": {
+            "ensemble_size": 10,
+            "max_depth": None,
+            "criterion": "gini"
+        }
+    },
+    "adaboost_classifier_w_uncertainty": {
+        "name": "AdaBoost Classifier (w/ Uncertainty)",
+        "function": _train_adaboost_classifier_w_uncertainty,
+        "hyperparams_function": _get_adaboost_classifier_w_uncertainty_hyperparams,
+        "description": "Ensemble of AdaBoost classifiers providing uncertainty estimates.",
+        "default_params": {
+            "ensemble_size": 10,
+            "n_estimators": 50,
+            "learning_rate": 1.0
+        }
+    },
+    "extra_trees_classifier_w_uncertainty": {
+        "name": "Extra Trees Classifier (w/ Uncertainty)",
+        "function": _train_extra_trees_classifier_w_uncertainty,
+        "hyperparams_function": _get_extra_trees_classifier_w_uncertainty_hyperparams,
+        "description": "Ensemble of Extra Trees classifiers with uncertainty quantification.",
+        "default_params": {
+            "ensemble_size": 10,
+            "n_estimators": 100,
+            "max_depth": None,
+            "max_features": "sqrt"
+        }
     }
 }
 
@@ -300,6 +396,66 @@ REGRESSION_MODELS = {
             "penalty": "l2",
             "alpha": 0.0001,
             "max_iter": 1000
+        }
+    },
+    # Ensemble models with uncertainty estimation
+    "random_forest_regressor_w_uncertainty": {
+        "name": "Random Forest Regressor (w/ Uncertainty)",
+        "function": _train_random_forest_regressor_w_uncertainty,
+        "hyperparams_function": _get_random_forest_regressor_w_uncertainty_hyperparams,
+        "description": "Ensemble of Random Forest regressors providing uncertainty estimates via prediction variance.",
+        "default_params": {
+            "ensemble_size": 10,
+            "n_estimators": 100,
+            "max_depth": None,
+            "max_features": "sqrt"
+        }
+    },
+    "gradient_boosting_regressor_w_uncertainty": {
+        "name": "Gradient Boosting Regressor (w/ Uncertainty)",
+        "function": _train_gradient_boosting_regressor_w_uncertainty,
+        "hyperparams_function": _get_gradient_boosting_regressor_w_uncertainty_hyperparams,
+        "description": "Ensemble of Gradient Boosting regressors with uncertainty quantification.",
+        "default_params": {
+            "ensemble_size": 10,
+            "n_estimators": 100,
+            "learning_rate": 0.1,
+            "max_depth": 3
+        }
+    },
+    "decision_tree_regressor_w_uncertainty": {
+        "name": "Decision Tree Regressor (w/ Uncertainty)",
+        "function": _train_decision_tree_regressor_w_uncertainty,
+        "hyperparams_function": _get_decision_tree_regressor_w_uncertainty_hyperparams,
+        "description": "Ensemble of Decision Trees with uncertainty quantification.",
+        "default_params": {
+            "ensemble_size": 10,
+            "max_depth": None,
+            "criterion": "squared_error"
+        }
+    },
+    "adaboost_regressor_w_uncertainty": {
+        "name": "AdaBoost Regressor (w/ Uncertainty)",
+        "function": _train_adaboost_regressor_w_uncertainty,
+        "hyperparams_function": _get_adaboost_regressor_w_uncertainty_hyperparams,
+        "description": "Ensemble of AdaBoost regressors providing uncertainty estimates.",
+        "default_params": {
+            "ensemble_size": 10,
+            "n_estimators": 50,
+            "learning_rate": 1.0,
+            "loss": "linear"
+        }
+    },
+    "extra_trees_regressor_w_uncertainty": {
+        "name": "Extra Trees Regressor (w/ Uncertainty)",
+        "function": _train_extra_trees_regressor_w_uncertainty,
+        "hyperparams_function": _get_extra_trees_regressor_w_uncertainty_hyperparams,
+        "description": "Ensemble of Extra Trees regressors with uncertainty quantification.",
+        "default_params": {
+            "ensemble_size": 10,
+            "n_estimators": 100,
+            "max_depth": None,
+            "max_features": "sqrt"
         }
     }
 }
