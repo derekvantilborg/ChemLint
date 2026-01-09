@@ -28,7 +28,8 @@ from molml_mcp.tools.core_mol.data_splitting import random_split_dataset, scaffo
 from molml_mcp.tools.core_mol.similarity import (
     compute_similarity_matrix,
     find_k_nearest_neighbors,
-    add_similarity_statistics_dataset
+    add_similarity_statistics_dataset,
+    add_training_set_similarity_statistics
 )
 
 from molml_mcp.tools.featurization.SMILES_encoding import get_all_smiles_encoding_tools
@@ -117,6 +118,7 @@ mcp.add_tool(cluster_based_split_dataset)
 mcp.add_tool(compute_similarity_matrix)
 mcp.add_tool(find_k_nearest_neighbors)
 mcp.add_tool(add_similarity_statistics_dataset)
+mcp.add_tool(add_training_set_similarity_statistics)
 
 # Add clustering tools
 from molml_mcp.tools.clustering.clust import get_all_clustering_tools
