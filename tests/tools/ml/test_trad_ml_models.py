@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 from sklearn.datasets import make_classification, make_regression
-from molml_mcp.tools.ml.trad_ml_models import (
+from molml_mcp.tools.ml.trad_ml.singular_models import (
     # Utility functions
     get_available_models,
     get_model_function,
