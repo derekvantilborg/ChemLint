@@ -989,3 +989,349 @@ def add_similarity_statistics_dataset(
             f"Use these statistics for diversity analysis, outlier detection, or filtering similar molecules."
         )
     }
+
+
+def add_training_set_similarity_statistics(
+    test_input_filename: str,
+    train_input_filename: str,
+    project_manifest_path: str,
+    test_smiles_column: str,
+    train_smiles_column: str,
+    test_feature_vectors_filename: str,
+    train_feature_vectors_filename: str,
+    output_filename: str,
+    explanation: str,
+    similarity_metric: str = 'tanimoto',
+    k_nearest: int = 5
+) -> dict:
+    """
+    Add similarity statistics to test molecules based on comparison to a training set.
+    
+    For each molecule in the test dataset, computes similarities to all molecules in the training set
+    and adds statistics as new columns. This is useful for:
+    - **Applicability domain analysis**: Are test molecules similar to training molecules?
+    - **Novelty detection**: Identify test molecules that are very different from training data
+    - **Model confidence**: Lower similarity to training set may indicate less reliable predictions
+    - **Dataset shifts**: Quantify distribution differences between train and test sets
+    
+    **Added Columns**:
+    - `mean_similarity_to_train`: Average similarity to all training molecules
+    - `median_similarity_to_train`: Median similarity to training molecules
+    - `max_similarity_to_train`: Similarity to most similar training molecule (nearest neighbor)
+    - `min_similarity_to_train`: Similarity to least similar training molecule
+    - `mean_top_k_similarity_to_train`: Average similarity to k nearest training neighbors
+    - `nearest_train_smiles`: SMILES of the most similar training molecule
+    - `nearest_train_similarity`: Similarity score to nearest training molecule
+    
+    Parameters
+    ----------
+    test_input_filename : str
+        Filename of the test dataset containing SMILES strings.
+    train_input_filename : str
+        Filename of the training dataset containing SMILES strings.
+    project_manifest_path : str
+        Path to the project's manifest.json file.
+    test_smiles_column : str
+        Name of the SMILES column in the test dataset.
+    train_smiles_column : str
+        Name of the SMILES column in the training dataset.
+    test_feature_vectors_filename : str
+        Filename of the precomputed feature vectors for test molecules (joblib format).
+        Dictionary mapping test SMILES to numpy arrays (fingerprints/descriptors).
+    train_feature_vectors_filename : str
+        Filename of the precomputed feature vectors for training molecules (joblib format).
+        Dictionary mapping training SMILES to numpy arrays (fingerprints/descriptors).
+    output_filename : str
+        Base name for the output test dataset with added statistics.
+    explanation : str
+        Description of what this operation represents.
+    similarity_metric : str, default='tanimoto'
+        Similarity metric: 'tanimoto', 'dice', 'cosine', 'euclidean', or 'manhattan'.
+    k_nearest : int, default=5
+        Number of nearest training neighbors to use for computing mean_top_k_similarity.
+    
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - output_filename: Stored test dataset filename with new columns
+        - n_test_molecules: Number of test molecules
+        - n_train_molecules: Number of training molecules
+        - columns: List of column names in output
+        - new_columns: List of newly added similarity statistic columns
+        - similarity_metric: Metric used
+        - k_nearest: Number of nearest neighbors used
+        - test_mean_similarity_to_train: Average of mean_similarity_to_train across all test molecules
+        - test_median_similarity_to_train: Median of mean_similarity_to_train across all test molecules
+        - min_test_similarity_to_train: Minimum similarity found (least similar test molecule)
+        - max_test_similarity_to_train: Maximum similarity found (most similar test molecule)
+        - n_test_below_threshold: Number of test molecules with max_similarity_to_train < 0.5 (novelty candidates)
+        - preview: First 5 rows as list of dicts
+        - note: Summary with interpretation guidance
+    
+    Raises
+    ------
+    ValueError
+        - If SMILES columns don't exist in the datasets
+        - If feature vectors are missing for any molecules
+        - If k_nearest is larger than number of training molecules
+        - If an invalid similarity_metric is specified
+    
+    Examples
+    --------
+    Add training set similarity statistics to test molecules:
+    
+        result = add_training_set_similarity_statistics(
+            test_input_filename='test_molecules_AB12CD34.csv',
+            train_input_filename='train_molecules_EF56GH78.csv',
+            project_manifest_path='/path/to/manifest.json',
+            test_smiles_column='smiles',
+            train_smiles_column='smiles',
+            test_feature_vectors_filename='test_ecfp_XY56ZW78.joblib',
+            train_feature_vectors_filename='train_ecfp_AB12CD34.joblib',
+            output_filename='test_with_train_similarity',
+            explanation='Added training set similarity statistics for applicability domain',
+            similarity_metric='tanimoto',
+            k_nearest=5
+        )
+        
+        # Analyze results
+        print(f"Average test-train similarity: {result['test_mean_similarity_to_train']:.3f}")
+        print(f"Novel molecules (max similarity < 0.5): {result['n_test_below_threshold']}")
+    
+    Identify molecules outside applicability domain:
+    
+        # After adding statistics, filter for low-similarity test molecules
+        df = pd.read_csv(result['output_filename'])
+        
+        # Find molecules with low similarity to training set (potential extrapolation)
+        low_similarity = df[df['max_similarity_to_train'] < 0.5]
+        print(f"{len(low_similarity)} test molecules have low similarity to training set")
+        print(f"Consider these predictions less reliable due to extrapolation")
+    
+    Compare different similarity metrics:
+    
+        for metric in ['tanimoto', 'cosine', 'euclidean']:
+            result = add_training_set_similarity_statistics(
+                test_input_filename='test_molecules_AB12CD34.csv',
+                train_input_filename='train_molecules_EF56GH78.csv',
+                project_manifest_path='/path/to/manifest.json',
+                test_smiles_column='smiles',
+                train_smiles_column='smiles',
+                test_feature_vectors_filename='test_descriptors_XY56ZW78.joblib',
+                train_feature_vectors_filename='train_descriptors_AB12CD34.joblib',
+                output_filename=f'test_train_sim_{metric}',
+                explanation=f'Training similarity using {metric}',
+                similarity_metric=metric
+            )
+            print(f"{metric}: mean={result['test_mean_similarity_to_train']:.3f}")
+    
+    Notes
+    -----
+    - **Applicability domain**: Test molecules with max_similarity_to_train < 0.5 may be outside model's applicability
+    - **Memory usage**: Computes M×N similarity matrix where M=test size, N=train size (O(MN))
+    - **Interpretation**: Higher similarity to training set → more reliable predictions
+    - **Novelty detection**: Use max_similarity_to_train to identify novel/outlier molecules
+    - **Common thresholds**:
+        - max_similarity > 0.7: Test molecule well-represented in training set
+        - max_similarity 0.5-0.7: Moderate similarity, reasonable prediction confidence
+        - max_similarity < 0.5: Low similarity, prediction may be unreliable
+    - Test and training sets can use different feature vector files (e.g., computed separately)
+    - Both feature sets must use the same fingerprint/descriptor type and parameters
+    
+    See Also
+    --------
+    add_similarity_statistics_dataset : Compute within-dataset similarity statistics
+    find_k_nearest_neighbors : Find specific nearest neighbors for query molecules
+    compute_similarity_matrix : Precompute full similarity matrix
+    """
+    # Load datasets and feature vectors
+    test_df = _load_resource(project_manifest_path, test_input_filename)
+    train_df = _load_resource(project_manifest_path, train_input_filename)
+    test_feature_vectors = _load_resource(project_manifest_path, test_feature_vectors_filename)
+    train_feature_vectors = _load_resource(project_manifest_path, train_feature_vectors_filename)
+    
+    # Validate inputs
+    if test_smiles_column not in test_df.columns:
+        raise ValueError(f"Column '{test_smiles_column}' not found in test dataset.")
+    if train_smiles_column not in train_df.columns:
+        raise ValueError(f"Column '{train_smiles_column}' not found in training dataset.")
+    
+    # Get SMILES lists
+    test_smiles_list = test_df[test_smiles_column].tolist()
+    train_smiles_list = train_df[train_smiles_column].tolist()
+    n_test = len(test_smiles_list)
+    n_train = len(train_smiles_list)
+    
+    # Validate k_nearest
+    if k_nearest > n_train:
+        raise ValueError(
+            f"k_nearest={k_nearest} is larger than number of training molecules ({n_train}). "
+            f"Set k_nearest <= {n_train}."
+        )
+    
+    # Validate that all SMILES have feature vectors
+    missing_test_smiles = [smi for smi in test_smiles_list if smi not in test_feature_vectors]
+    if missing_test_smiles:
+        raise ValueError(
+            f"Test feature vectors missing for {len(missing_test_smiles)} molecules. "
+            f"Examples: {missing_test_smiles[:5]}. "
+            f"Ensure all test SMILES have corresponding feature vectors."
+        )
+    
+    missing_train_smiles = [smi for smi in train_smiles_list if smi not in train_feature_vectors]
+    if missing_train_smiles:
+        raise ValueError(
+            f"Training feature vectors missing for {len(missing_train_smiles)} molecules. "
+            f"Examples: {missing_train_smiles[:5]}. "
+            f"Ensure all training SMILES have corresponding feature vectors."
+        )
+    
+    # Build feature matrices
+    test_feature_matrix = np.array([test_feature_vectors[smi] for smi in test_smiles_list])
+    train_feature_matrix = np.array([train_feature_vectors[smi] for smi in train_smiles_list])
+    
+    # Compute M × N similarity matrix (test vs train)
+    if similarity_metric == 'tanimoto':
+        # Use optimized RDKit implementation for Tanimoto
+        from rdkit import DataStructs
+        
+        # Convert test fingerprints to RDKit
+        test_rdkit_fps = []
+        for fp_array in test_feature_matrix:
+            bit_string = ''.join(map(str, fp_array.astype(int)))
+            test_rdkit_fps.append(DataStructs.CreateFromBitString(bit_string))
+        
+        # Convert training fingerprints to RDKit
+        train_rdkit_fps = []
+        for fp_array in train_feature_matrix:
+            bit_string = ''.join(map(str, fp_array.astype(int)))
+            train_rdkit_fps.append(DataStructs.CreateFromBitString(bit_string))
+        
+        # Compute similarities: M rows (test) × N columns (train)
+        similarity_matrix = np.zeros((n_test, n_train))
+        for i in range(n_test):
+            sims = DataStructs.BulkTanimotoSimilarity(test_rdkit_fps[i], train_rdkit_fps)
+            similarity_matrix[i, :] = sims
+    
+    elif similarity_metric == 'dice':
+        # Dice coefficient: 2 * dot(A,B) / (||A||² + ||B||²)
+        dot_product = test_feature_matrix @ train_feature_matrix.T  # M × N
+        test_norms_sq = np.sum(test_feature_matrix ** 2, axis=1)  # M
+        train_norms_sq = np.sum(train_feature_matrix ** 2, axis=1)  # N
+        denominator = test_norms_sq[:, None] + train_norms_sq  # M × N
+        denominator = np.where(denominator == 0, 1e-10, denominator)
+        similarity_matrix = 2 * dot_product / denominator
+    
+    elif similarity_metric == 'cosine':
+        # Cosine similarity
+        distance_matrix = cdist(test_feature_matrix, train_feature_matrix, metric='cosine')
+        similarity_matrix = 1 - distance_matrix
+    
+    elif similarity_metric == 'euclidean':
+        # Euclidean similarity
+        distance_matrix = cdist(test_feature_matrix, train_feature_matrix, metric='euclidean')
+        similarity_matrix = 1 / (1 + distance_matrix)
+    
+    elif similarity_metric == 'manhattan':
+        # Manhattan similarity
+        distance_matrix = cdist(test_feature_matrix, train_feature_matrix, metric='cityblock')
+        similarity_matrix = 1 / (1 + distance_matrix)
+    
+    else:
+        supported_metrics = list(_SIMILARITY_METRICS.keys())
+        raise ValueError(
+            f"Unsupported similarity metric: '{similarity_metric}'. "
+            f"Supported metrics: {supported_metrics}"
+        )
+    
+    # Create a copy of the test dataframe for modifications
+    test_df_out = test_df.copy()
+    
+    # Compute per-test-molecule statistics
+    mean_similarities = []
+    median_similarities = []
+    max_similarities = []
+    min_similarities = []
+    mean_top_k_similarities = []
+    nearest_train_smiles_list = []
+    nearest_train_similarities = []
+    
+    for i in range(n_test):
+        # Get all similarities from test molecule i to all training molecules
+        test_to_train_sims = similarity_matrix[i, :]
+        
+        # Compute statistics
+        mean_similarities.append(float(np.mean(test_to_train_sims)))
+        median_similarities.append(float(np.median(test_to_train_sims)))
+        max_similarities.append(float(np.max(test_to_train_sims)))
+        min_similarities.append(float(np.min(test_to_train_sims)))
+        
+        # Find k nearest training neighbors
+        top_k_indices = np.argsort(test_to_train_sims)[-k_nearest:][::-1]
+        top_k_sims = test_to_train_sims[top_k_indices]
+        mean_top_k_similarities.append(float(np.mean(top_k_sims)))
+        
+        # Store nearest neighbor info
+        nearest_idx = np.argmax(test_to_train_sims)
+        nearest_train_smiles_list.append(train_smiles_list[nearest_idx])
+        nearest_train_similarities.append(float(test_to_train_sims[nearest_idx]))
+    
+    # Add new columns to test dataframe
+    test_df_out['mean_similarity_to_train'] = mean_similarities
+    test_df_out['median_similarity_to_train'] = median_similarities
+    test_df_out['max_similarity_to_train'] = max_similarities
+    test_df_out['min_similarity_to_train'] = min_similarities
+    test_df_out[f'mean_top_{k_nearest}_similarity_to_train'] = mean_top_k_similarities
+    test_df_out['nearest_train_smiles'] = nearest_train_smiles_list
+    test_df_out['nearest_train_similarity'] = nearest_train_similarities
+    
+    # Define new columns list
+    new_columns = [
+        'mean_similarity_to_train',
+        'median_similarity_to_train',
+        'max_similarity_to_train',
+        'min_similarity_to_train',
+        f'mean_top_{k_nearest}_similarity_to_train',
+        'nearest_train_smiles',
+        'nearest_train_similarity'
+    ]
+    
+    # Compute overall statistics
+    test_mean_similarity = float(np.mean(mean_similarities))
+    test_median_similarity = float(np.median(mean_similarities))
+    min_test_similarity = float(np.min(max_similarities))
+    max_test_similarity = float(np.max(max_similarities))
+    n_test_below_threshold = int(np.sum(np.array(max_similarities) < 0.5))
+    
+    # Store output dataset
+    output_filename = _store_resource(
+        test_df_out,
+        project_manifest_path,
+        output_filename,
+        explanation,
+        'csv'
+    )
+    
+    return {
+        "output_filename": output_filename,
+        "n_test_molecules": n_test,
+        "n_train_molecules": n_train,
+        "columns": test_df_out.columns.tolist(),
+        "new_columns": new_columns,
+        "similarity_metric": similarity_metric,
+        "k_nearest": k_nearest,
+        "test_mean_similarity_to_train": test_mean_similarity,
+        "test_median_similarity_to_train": test_median_similarity,
+        "min_test_similarity_to_train": min_test_similarity,
+        "max_test_similarity_to_train": max_test_similarity,
+        "n_test_below_threshold": n_test_below_threshold,
+        "note": (
+            f"Added {len(new_columns)} training set similarity statistics to {n_test} test molecules. "
+            f"Compared against {n_train} training molecules using {similarity_metric} metric. "
+            f"Average test-to-train similarity: {test_mean_similarity:.3f}. "
+            f"{n_test_below_threshold} test molecules have max_similarity_to_train < 0.5 (novelty candidates). "
+            f"Use max_similarity_to_train to assess applicability domain: "
+            f">0.7=well-represented, 0.5-0.7=moderate, <0.5=extrapolation risk."
+        )
+    }
