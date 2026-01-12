@@ -1146,37 +1146,29 @@ def _perform_quality_report_calculations(
     """
     Perform all quality report calculations and store results as JSON.
     
-    This function runs all analyses and stores the results in a JSON file,
-    then cleans up all temporary files created during the process.
-    
-    All analyses work on the dataset without modifying it. Where needed (e.g.,
-    salt/solvent detection), SMILES are canonicalized temporarily for accurate
-    pattern matching.
-    
     Parameters
     ----------
     input_filename : str
-        Input dataset filename (e.g., "raw_data_12345678.csv")
+        Input dataset filename.
     project_manifest_path : str
-        Path to manifest.json for resource management
+        Path to manifest.json.
     smiles_col : str, default='SMILES'
-        Column containing SMILES strings
+        Column containing SMILES strings.
     activity_col : str, optional
-        Column containing bioactivity values (optional)
+        Column containing bioactivity values.
     activity_type : str, optional
-        Type of activity data: 'classification' or 'regression'.
-        Required if activity_col is provided.
+        'classification' or 'regression'. Required if activity_col provided.
     activity_units : str, default='nM'
-        Units for continuous activity data (e.g., 'nM', 'μM')
+        Units for continuous activity data.
     output_name : str, default='quality_report'
-        Prefix for output JSON file
+        Prefix for output JSON file.
     explanation : str
-        Description of calculation operation
+        Description for manifest.
     
     Returns
     -------
     str
-        JSON filename containing all calculation results
+        JSON filename containing all calculation results.
     """
     from pathlib import Path
     import json
@@ -1567,64 +1559,34 @@ def generate_quality_report(
     """
     Generate comprehensive data quality report for a molecular dataset.
     
-    This function first performs all calculations (or uses pre-calculated results),
-    then generates a formatted text report from the calculation results.
-    
-    Works on raw datasets without modification - where needed (e.g., salt/solvent
-    detection), SMILES are canonicalized temporarily for accurate pattern matching.
-    
-    Generates a 19-section formatted report covering:
-    1. Dataset Overview
-    2. Data Completeness
-    3. SMILES Validity
-    4. PAINS Patterns
-    5. Duplicates & Conflicts
-    6. Physicochemical Properties
-    7. Lipinski Rule of Five
-    8. Veber Rules
-    9. QED Analysis
-    10. Outlier Detection
-    11. Activity Distribution (optional)
-    12. Activity Correlations (optional)
-    13. Scaffold Diversity
-    14. Functional Group Analysis
-    15. Stereochemistry Analysis
-    16. Charge State Analysis
-    17. Salts/Fragments/Solvents
-    18. Special Features (Organometallics/Isotopes/Rings)
-    19. Recommended Cleaning Workflow
+    Performs calculations and generates formatted text report covering dataset overview,
+    completeness, SMILES validity, PAINS, duplicates, physicochemical properties, drug-likeness
+    rules, outliers, activity distributions, scaffold diversity, functional groups, stereochemistry,
+    charge states, salts/fragments, special features, and cleaning recommendations.
     
     Parameters
     ----------
     input_filename : str
-        Input dataset filename (e.g., "raw_data_12345678.csv")
+        Input dataset filename.
     project_manifest_path : str
-        Path to manifest.json for resource management
+        Path to manifest.json.
     smiles_col : str, default='SMILES'
-        Column containing SMILES strings
+        Column containing SMILES strings.
     activity_col : str, optional
-        Column containing bioactivity values (optional)
+        Column containing bioactivity values.
     activity_type : str, optional
-        Type of activity data: 'classification' or 'regression'.
-        Required if activity_col is provided.
+        'classification' or 'regression'. Required if activity_col provided.
     activity_units : str, default='nM'
-        Units for continuous activity data (e.g., 'nM', 'μM')
+        Units for continuous activity data.
     output_name : str, default='quality_report'
-        Prefix for output report files
+        Prefix for output report files.
     explanation : str
-        Description of report generation
+        Description for manifest.
     
     Returns
     -------
     dict
-        {
-            'report_text': str,  # Full formatted report
-            'calculations_json': str,  # JSON filename with calculation results
-            'report_txt': str,   # Text report filename
-            'n_issues': int,  # Number of quality issues detected
-            'critical_issues': list[str],  # List of critical issues requiring attention
-            'key_metrics': dict,  # Dictionary of key quality metrics
-        }
+        Contains report_text, calculations_json, report_txt, n_issues, critical_issues, key_metrics.
     """
     # Step 1: Perform all calculations
     json_filename = _perform_quality_report_calculations(

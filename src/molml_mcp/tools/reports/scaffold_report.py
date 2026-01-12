@@ -23,11 +23,6 @@ def _calculate_gini_coefficient(counts: List[int]) -> float:
     
     Gini = 0: perfect equality (all scaffolds have same count)
     Gini = 1: perfect inequality (one scaffold has all molecules)
-    
-    Typical values:
-    - 0.0-0.3: Low inequality (diverse scaffolds)
-    - 0.3-0.6: Moderate inequality
-    - 0.6-1.0: High inequality (few dominant scaffolds)
     """
     if len(counts) == 0:
         return 0.0
@@ -42,13 +37,8 @@ def _calculate_shannon_entropy(counts: List[int]) -> float:
     """
     Calculate Shannon entropy for scaffold diversity.
     
-    Higher entropy = more diverse scaffold distribution
-    Lower entropy = dominated by few scaffolds
-    
-    Typical interpretation:
-    - 0-2: Low diversity (few dominant scaffolds)
-    - 2-4: Moderate diversity
-    - 4+: High diversity (many different scaffolds)
+    Higher entropy = more diverse scaffold distribution.
+    Lower entropy = dominated by few scaffolds.
     """
     counts = np.array(counts)
     total = counts.sum()
@@ -241,76 +231,35 @@ def generate_scaffold_report(
     explanation: str = "Generated scaffold analysis report"
 ) -> Dict:
     """
-    Generate a comprehensive scaffold analysis report for a molecular dataset.
-    
-    This function creates a detailed report analyzing the distribution, diversity, 
-    and characteristics of molecular scaffolds in a dataset. The report includes:
-    - Overview statistics (total molecules, unique scaffolds, diversity metrics)
-    - Distribution analysis (singleton, rare, common, abundant scaffolds)
-    - Top most common scaffolds
-    - Structural outliers (scaffolds dissimilar to others)
-    - Optional: Activity enrichment analysis for privileged/inactive scaffolds
-    
-    The report is saved as both a formatted text file and a structured JSON file
-    for programmatic access.
+    Generate comprehensive scaffold analysis report with distribution, diversity, and optional activity enrichment.
     
     Parameters
     ----------
     dataset_filename : str
-        Input dataset filename from manifest (must contain SMILES column).
+        Input dataset filename from manifest.
     project_manifest_path : str
-        Path to the project manifest.json file.
+        Path to project manifest.json.
     smiles_column : str
-        Name of the column containing SMILES strings.
+        Column containing SMILES strings.
     output_filename : str
-        Name for the output report files (will be versioned with unique ID).
-        Two files will be created: {output_filename}.txt and {output_filename}.json
+        Name for output report files.
     scaffold_type : str, default='bemis_murcko'
-        Type of scaffold to extract. Options:
-        - 'bemis_murcko': Bemis-Murcko scaffold (rings + linkers, retains some substituents)
-        - 'generic': Generic skeleton (all atoms → carbon, all bonds → single)
-        - 'cyclic_skeleton': Cyclic skeleton (rings + linkers only, no side chains)
+        Type: 'bemis_murcko', 'generic', or 'cyclic_skeleton'.
     activity_column : str, optional
-        Name of the column containing activity data for enrichment analysis.
-        If None, activity enrichment section will be skipped.
+        Column with activity data for enrichment analysis.
     activity_type : str, optional
-        Type of activity data: 'classification' (binary 0/1) or 'regression' (continuous).
-        Required if activity_column is provided.
+        'classification' or 'regression' (required if activity_column provided).
     outlier_threshold : float, default=0.2
-        Tanimoto similarity threshold for identifying structural outliers.
-        Scaffolds with average similarity < threshold are considered outliers.
+        Tanimoto threshold for structural outliers.
     top_n : int, default=10
-        Number of top scaffolds to show in the report.
+        Number of top scaffolds to show.
     explanation : str
-        Human-readable description of this operation.
+        Description of operation.
         
     Returns
     -------
     dict
-        Contains:
-        - report_text_filename: Filename of the formatted text report (.txt)
-        - report_json_filename: Filename of the structured JSON report (.json)
-        - dataset_with_scaffolds_filename: Dataset with scaffold column added
-        - n_molecules: Total number of molecules
-        - n_unique_scaffolds: Number of unique scaffolds
-        - n_no_scaffold: Number of molecules without scaffolds
-        - diversity_ratio: Ratio of unique scaffolds to total molecules
-        - summary: Brief summary of findings
-        - report: Full text report content
-        
-    Example
-    -------
-    >>> result = generate_scaffold_report(
-    ...     'my_dataset.csv',
-    ...     '/path/to/manifest.json',
-    ...     'SMILES',
-    ...     'scaffold_report',
-    ...     scaffold_type='bemis_murcko',
-    ...     activity_column='active',
-    ...     activity_type='classification'
-    ... )
-    >>> print(result['summary'])
-    Analyzed 3,347 molecules with 487 unique scaffolds (14.5% diversity).
+        Report filenames, statistics, and summary.
     """
     # Validate inputs
     if activity_column is not None and activity_type is None:

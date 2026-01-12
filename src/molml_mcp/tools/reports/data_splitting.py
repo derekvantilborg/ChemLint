@@ -1838,68 +1838,53 @@ def analyze_split_quality(
     max_examples: int = 10
 ) -> Dict:
     """
-    Comprehensive data splitting quality analysis combining all helper functions.
+    Comprehensive data splitting quality analysis combining all quality checks.
     
-    Runs all 8 quality checks and combines results into a single comprehensive report:
-    1. Split characteristics (sizes, class balance)
-    2. Exact duplicate detection (CRITICAL if found)
-    3. Similarity-based leakage detection (HIGH severity)
-    4. Scaffold overlap detection (HIGH/MEDIUM/LOW)
-    5. Stereoisomer/tautomer leakage (MEDIUM)
-    6. Property distribution comparison (MEDIUM if biased)
-    7. Activity distribution comparison (MEDIUM if biased)
-    8. Functional group distribution analysis (MEDIUM if biased)
+    Runs 8 quality checks: split characteristics, exact duplicates, similarity leakage,
+    scaffold overlap, stereoisomer/tautomer leakage, property distributions,
+    activity distributions, and functional group distributions.
     
     Parameters
     ----------
     train_path : str
-        Filename of training split resource
+        Training split filename.
     test_path : str
-        Filename of test split resource
+        Test split filename.
     val_path : Optional[str]
-        Filename of validation split resource (if exists)
+        Validation split filename (if exists).
     project_manifest_path : str
-        Path to manifest.json
+        Path to manifest.json.
     smiles_col : str
-        Name of SMILES column
+        SMILES column name.
     label_col : str
-        Name of label column
+        Label column name.
     output_filename : str
-        Output filename prefix (e.g., "split_quality_report")
+        Output filename prefix.
     explanation : str
-        Human-readable description of this analysis
-    min_split_size : int
-        Minimum acceptable split size (default: 50)
-    imbalance_threshold : float
-        Threshold for class imbalance (default: 0.1)
-    similarity_threshold : float
-        Tanimoto similarity threshold for leakage (default: 0.9)
-    activity_cliff_similarity : float
-        Similarity threshold for activity cliffs (default: 0.8)
-    activity_cliff_fold_diff : float
-        Fold difference for regression activity cliffs (default: 10.0)
-    alpha : float
-        Significance level for statistical tests (default: 0.05)
-    min_occurrence_threshold : int
-        Minimum functional group occurrences to flag (default: 2)
-    max_examples : int
-        Maximum examples to include per issue (default: 10)
+        Description for manifest.
+    min_split_size : int, default=50
+        Minimum acceptable split size.
+    imbalance_threshold : float, default=0.1
+        Class imbalance threshold.
+    similarity_threshold : float, default=0.9
+        Tanimoto similarity threshold for leakage.
+    activity_cliff_similarity : float, default=0.8
+        Similarity threshold for activity cliffs.
+    activity_cliff_fold_diff : float, default=10.0
+        Fold difference for regression activity cliffs.
+    alpha : float, default=0.05
+        Significance level for statistical tests.
+    min_occurrence_threshold : int, default=2
+        Minimum functional group occurrences to flag.
+    max_examples : int, default=10
+        Maximum examples per issue.
         
     Returns
     -------
-    Dict with:
-        - output_filename: saved JSON report filename
-        - overall_severity: highest severity found across all checks
-        - severity_summary: count of issues by severity
-        - split_characteristics: basic split info
-        - exact_duplicates: identical molecules across splits
-        - similarity_leakage: highly similar molecules
-        - scaffold_leakage: scaffold overlap
-        - stereoisomer_tautomer_leakage: stereoisomers and tautomers
-        - property_distributions: physicochemical properties
-        - activity_distributions: label/activity distributions
-        - functional_groups: functional group distributions
-        - metadata: analysis parameters and timestamp
+    Dict
+        Contains output_filename, overall_severity, severity_summary, split_characteristics,
+        exact_duplicates, similarity_leakage, scaffold_leakage, stereoisomer_tautomer_leakage,
+        property_distributions, activity_distributions, functional_groups, metadata.
     """
     import json
     from datetime import datetime
@@ -2116,78 +2101,51 @@ def generate_split_quality_text_report(
     max_examples: int = 10
 ) -> Dict:
     """
-    **PRIMARY TOOL**: Comprehensive train/test/val split quality analysis for molecular ML datasets.
+    Comprehensive train/test/val split quality analysis producing human-readable text report.
     
-    Use this tool to evaluate data splitting quality and detect data leakage issues that could
-    inflate model performance. This is an end-to-end analysis tool - just provide your split
-    files and get both detailed JSON results and a human-readable text report.
-    
-    **When to use this tool:**
-    - Validating train/test/val splits before model training
-    - Investigating suspected data leakage or performance inflation
-    - Ensuring proper data splitting for molecular machine learning
-    - Auditing dataset quality for publications or production models
-    
-    **What this tool detects:**
-    - 🔴 CRITICAL: Exact duplicate molecules across splits (data leakage)
-    - ⚠️ HIGH: Highly similar molecules between train/test (>0.9 Tanimoto similarity)
-    - ⚠️ HIGH: Activity cliffs (similar structures, different labels)
-    - ⚠️ MEDIUM: Scaffold overlap between splits
-    - ⚠️ MEDIUM: Stereoisomers and tautomers across splits
-    - ⚠️ MEDIUM: Biased physicochemical property distributions
-    - ⚠️ MEDIUM: Biased activity/label distributions
-    - ⚠️ LOW: Unique functional groups in test/val sets
-    
-    **Outputs:**
-    - Human-readable text report (.txt) with severity indicators and recommendations
-    - Detailed JSON report (.json) with all numerical results for programmatic access
-    - Overall severity assessment (OK/LOW/MEDIUM/HIGH/CRITICAL)
-    - Actionable insights for each issue detected
+    Generates both a detailed JSON report and a human-readable text report for data splitting
+    quality assessment. Detects data leakage, distribution biases, and splitting issues.
     
     Parameters
     ----------
     train_path : str
-        Filename of training split resource
+        Training split filename.
     test_path : str
-        Filename of test split resource
+        Test split filename.
     val_path : Optional[str]
-        Filename of validation split resource (if exists)
+        Validation split filename (if exists).
     project_manifest_path : str
-        Path to manifest.json
+        Path to manifest.json.
     smiles_col : str
-        Name of SMILES column
+        SMILES column name.
     label_col : str
-        Name of label column
+        Label column name.
     output_filename : str
-        Output filename prefix for the text report (e.g., "split_quality_report")
+        Output filename prefix for text report.
     explanation : str
-        Human-readable description of this report
-    min_split_size : int
-        Minimum acceptable split size (default: 50)
-    imbalance_threshold : float
-        Threshold for class imbalance (default: 0.1)
-    similarity_threshold : float
-        Tanimoto similarity threshold for leakage (default: 0.9)
-    activity_cliff_similarity : float
-        Similarity threshold for activity cliffs (default: 0.8)
-    activity_cliff_fold_diff : float
-        Fold difference for regression activity cliffs (default: 10.0)
-    alpha : float
-        Significance level for statistical tests (default: 0.05)
-    min_occurrence_threshold : int
-        Minimum functional group occurrences to flag (default: 2)
-    max_examples : int
-        Maximum examples to include per issue (default: 10)
+        Description for manifest.
+    min_split_size : int, default=50
+        Minimum acceptable split size.
+    imbalance_threshold : float, default=0.1
+        Class imbalance threshold.
+    similarity_threshold : float, default=0.9
+        Tanimoto similarity threshold for leakage.
+    activity_cliff_similarity : float, default=0.8
+        Similarity threshold for activity cliffs.
+    activity_cliff_fold_diff : float, default=10.0
+        Fold difference for regression activity cliffs.
+    alpha : float, default=0.05
+        Significance level for statistical tests.
+    min_occurrence_threshold : int, default=2
+        Minimum functional group occurrences to flag.
+    max_examples : int, default=10
+        Maximum examples per issue.
         
     Returns
     -------
-    Dict with:
-        - output_filename: saved text report filename
-        - json_report_filename: saved JSON report filename
-        - n_lines: number of lines in text report
-        - overall_severity: highest severity found
-        - report_sections: list of section names included
-        - issues_found: summary of key issues detected
+    Dict
+        Contains output_filename, json_report_filename, n_lines, overall_severity,
+        report_sections, issues_found.
     """
     from molml_mcp.infrastructure.resources import _load_resource, _store_resource
     
