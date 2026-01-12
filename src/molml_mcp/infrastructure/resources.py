@@ -309,6 +309,8 @@ def create_project_manifest(path: str, project_name: str) -> dict:
     Creates a JSON manifest file at <path>/<project_name>_manifest.json to track all
     resources (datasets, models, feature vectors, etc.) created during analysis.
     The manifest records what was created, when, and which operations produced it.
+
+    The default data directory can be found using check_default_data_dir().
     
     **IMPORTANT**: You should create a manifest BEFORE performing any operations that
     store resources. Ask the user to provide a project directory path and name.
@@ -557,6 +559,27 @@ def list_untracked_resources_in_project(project_manifest_path: str) -> list[str]
     return untracked_files
 
 
+def check_default_data_dir() -> str:
+    """Get the default data directory path for storing project manifests and resources.
+    
+    Returns the configured default data directory where project manifests and their
+    associated resources are stored when no explicit path is provided. This directory
+    can be customized via the MOLML_MCP_DATA_DIR environment variable.
+    
+    Returns:
+        str: Absolute path to the default data directory
+        
+    Example:
+        >>> dir_path = check_default_data_dir()
+        >>> print(f"Default data directory: {dir_path}")
+        Default data directory: /Users/username/.molml_mcp
+        
+    Note:
+        The default is ~/.molml_mcp unless overridden by MOLML_MCP_DATA_DIR environment variable.
+    """
+    return str(DATA_ROOT)
+
+
 def get_all_resources_tools() -> list[Callable]:
     """Return list of all resource management tools for MCP server."""
     return [
@@ -565,5 +588,6 @@ def get_all_resources_tools() -> list[Callable]:
         add_to_project_manifest,
         remove_from_project_manifest,
         list_untracked_resources_in_project,
-        get_supported_resource_types
+        get_supported_resource_types,
+        check_default_data_dir
     ]
