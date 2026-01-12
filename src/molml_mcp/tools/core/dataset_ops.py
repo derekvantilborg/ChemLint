@@ -1214,6 +1214,152 @@ def combine_datasets_vertical(
     }
 
 
+def combine_datasets_horizontal(
+    project_manifest_path: str,
+    left_filename: str,
+    right_filename: str,
+    output_filename: str,
+    explanation: str,
+    verify_alignment: bool = True,
+    on_mismatch: str = 'raise'
+) -> dict:
+    """
+    Combine two datasets horizontally (side-by-side, adding columns).
+    
+    Joins datasets by concatenating columns. By default, verifies that rows
+    are aligned (same order and count) before combining.
+    
+    Use Cases:
+    - Add computed features to existing dataset
+    - Merge descriptors with labels (when already aligned)
+    - Combine train/test splits that share same row order
+    
+    Parameters
+    ----------
+    project_manifest_path : str
+        Path to the manifest.json file tracking all project resources.
+    left_filename : str
+        Filename of the left dataset (with unique ID).
+    right_filename : str
+        Filename of the right dataset (with unique ID).
+    output_filename : str
+        Base name for the output file (unique ID will be appended).
+    explanation : str
+        Human-readable description of the combination operation.
+    verify_alignment : bool, default=True
+        If True, verify both datasets have same row count and order.
+        Checks that index values match exactly.
+    on_mismatch : {'raise', 'warn'}, default='raise'
+        Action when alignment verification fails:
+        - 'raise': Raise ValueError
+        - 'warn': Print warning but continue with simple concatenation
+    
+    Returns
+    -------
+    dict
+        {
+            "output_filename": str,
+            "n_rows": int,
+            "n_columns": int,
+            "n_columns_left": int,
+            "n_columns_right": int,
+            "alignment_verified": bool,
+            "columns": list[str],
+            "preview": list[dict]
+        }
+    
+    Raises
+    ------
+    ValueError
+        If verify_alignment=True and datasets have mismatched row counts or indices.
+        If datasets have overlapping column names.
+    
+    Notes
+    -----
+    - Datasets must have same number of rows
+    - Column names must be unique across both datasets (no overlap)
+    - Row order matters - use verify_alignment=True to ensure alignment
+    - For key-based joins, use merge functions instead
+    
+    Examples
+    --------
+    >>> combine_datasets_horizontal(
+    ...     project_manifest_path="project/manifest.json",
+    ...     left_filename="molecules_ABC123.csv",
+    ...     right_filename="descriptors_XYZ789.csv",
+    ...     output_filename="combined_features",
+    ...     explanation="Add molecular descriptors to base dataset"
+    ... )
+    """
+    import pandas as pd
+    
+    # Load datasets
+    df_left = _load_resource(project_manifest_path, left_filename)
+    df_right = _load_resource(project_manifest_path, right_filename)
+    
+    # Check for column name overlap
+    left_cols = set(df_left.columns)
+    right_cols = set(df_right.columns)
+    overlap = left_cols & right_cols
+    if overlap:
+        raise ValueError(
+            f"Datasets have overlapping column names: {sorted(overlap)}. "
+            "Column names must be unique across both datasets."
+        )
+    
+    # Verify alignment if requested
+    alignment_verified = False
+    if verify_alignment:
+        # Check row counts
+        if len(df_left) != len(df_right):
+            msg = (
+                f"Row count mismatch: left has {len(df_left)} rows, "
+                f"right has {len(df_right)} rows"
+            )
+            if on_mismatch == 'raise':
+                raise ValueError(msg)
+            elif on_mismatch == 'warn':
+                print(f"WARNING: {msg}")
+            else:
+                raise ValueError(f"Invalid on_mismatch='{on_mismatch}'. Must be 'raise' or 'warn'")
+        
+        # Check index alignment
+        elif not df_left.index.equals(df_right.index):
+            msg = (
+                f"Index mismatch: datasets have same row count ({len(df_left)}) "
+                "but indices do not match. Rows may not be aligned."
+            )
+            if on_mismatch == 'raise':
+                raise ValueError(msg)
+            elif on_mismatch == 'warn':
+                print(f"WARNING: {msg}")
+        else:
+            alignment_verified = True
+    
+    # Combine horizontally
+    combined_df = pd.concat([df_left, df_right], axis=1)
+    
+    # Store result
+    output_filename_stored = _store_resource(
+        combined_df, 
+        project_manifest_path, 
+        output_filename, 
+        explanation, 
+        'csv'
+    )
+    
+    return {
+        "output_filename": output_filename_stored,
+        "n_rows": len(combined_df),
+        "n_columns": len(combined_df.columns),
+        "n_columns_left": len(df_left.columns),
+        "n_columns_right": len(df_right.columns),
+        "alignment_verified": alignment_verified,
+        "columns": list(combined_df.columns),
+        "preview": combined_df.head(5).to_dict(orient="records"),
+    }
+
+
 def get_all_dataset_tools():
     """Return a list of all dataset manipulation tools."""
     return [
@@ -1230,5 +1376,6 @@ def get_all_dataset_tools():
         drop_columns,
         keep_columns,
         transform_column,
-        combine_datasets_vertical
+        combine_datasets_vertical,
+        combine_datasets_horizontal
     ]

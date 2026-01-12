@@ -743,6 +743,132 @@ def test_combine_datasets_vertical(session_workdir, request):
     assert "label" in df_mixed.columns
 
 
+def test_combine_datasets_horizontal(session_workdir, request):
+    """Test horizontal dataset combination (column-wise concatenation)."""
+    from molml_mcp.tools.core.dataset_ops import combine_datasets_horizontal
+    from molml_mcp.infrastructure.resources import create_project_manifest, _load_resource, _store_resource
+    
+    # Setup
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    manifest_path = str(test_dir / "test_manifest.json")
+    
+    # Create left dataset (molecules with identifiers)
+    left_data = pd.DataFrame({
+        "smiles": ["CCO", "CC(C)O", "c1ccccc1"],
+        "mol_id": ["mol1", "mol2", "mol3"]
+    })
+    left_file = _store_resource(left_data, manifest_path, "left_data", "Left dataset", 'csv')
+    
+    # Create right dataset (descriptors)
+    right_data = pd.DataFrame({
+        "mw": [46.07, 60.10, 78.11],
+        "logp": [-0.3, 0.1, 1.6]
+    })
+    right_file = _store_resource(right_data, manifest_path, "right_data", "Right dataset", 'csv')
+    
+    # Test 1: Basic horizontal combination with verification
+    result = combine_datasets_horizontal(
+        project_manifest_path=manifest_path,
+        left_filename=left_file,
+        right_filename=right_file,
+        output_filename="combined_horizontal",
+        explanation="Combine molecules with descriptors",
+        verify_alignment=True
+    )
+    
+    assert "output_filename" in result
+    assert result["n_rows"] == 3
+    assert result["n_columns"] == 4  # 2 from left + 2 from right
+    assert result["n_columns_left"] == 2
+    assert result["n_columns_right"] == 2
+    assert result["alignment_verified"] is True
+    assert set(result["columns"]) == {"smiles", "mol_id", "mw", "logp"}
+    
+    # Verify actual data
+    df_combined = _load_resource(manifest_path, result["output_filename"])
+    assert len(df_combined) == 3
+    assert list(df_combined["smiles"]) == ["CCO", "CC(C)O", "c1ccccc1"]
+    assert list(df_combined["mw"]) == [46.07, 60.10, 78.11]
+    
+    # Test 2: Overlapping column names should raise error
+    right_overlap = pd.DataFrame({
+        "smiles": ["XXX", "YYY", "ZZZ"],  # Overlaps with left
+        "mw": [46.07, 60.10, 78.11]
+    })
+    right_overlap_file = _store_resource(right_overlap, manifest_path, "right_overlap", "Overlap test", 'csv')
+    
+    with pytest.raises(ValueError, match="overlapping column names"):
+        combine_datasets_horizontal(
+            project_manifest_path=manifest_path,
+            left_filename=left_file,
+            right_filename=right_overlap_file,
+            output_filename="should_fail",
+            explanation="Should fail"
+        )
+    
+    # Test 3: Mismatched row counts with verify_alignment=True should raise
+    right_short = pd.DataFrame({
+        "mw": [46.07, 60.10],  # Only 2 rows
+        "logp": [-0.3, 0.1]
+    })
+    right_short_file = _store_resource(right_short, manifest_path, "right_short", "Short dataset", 'csv')
+    
+    with pytest.raises(ValueError, match="Row count mismatch"):
+        combine_datasets_horizontal(
+            project_manifest_path=manifest_path,
+            left_filename=left_file,
+            right_filename=right_short_file,
+            output_filename="should_fail",
+            explanation="Should fail",
+            verify_alignment=True
+        )
+    
+    # Test 4: Mismatched row counts with on_mismatch='warn' should work
+    result_warn = combine_datasets_horizontal(
+        project_manifest_path=manifest_path,
+        left_filename=left_file,
+        right_filename=right_short_file,
+        output_filename="warn_test",
+        explanation="Test warning mode",
+        verify_alignment=True,
+        on_mismatch='warn'
+    )
+    
+    assert result_warn["alignment_verified"] is False
+    # pandas concat with axis=1 will create NaN for missing values
+    df_warn = _load_resource(manifest_path, result_warn["output_filename"])
+    assert len(df_warn) == 3  # Takes max length
+    
+    # Test 5: No verification (verify_alignment=False)
+    result_no_verify = combine_datasets_horizontal(
+        project_manifest_path=manifest_path,
+        left_filename=left_file,
+        right_filename=right_short_file,
+        output_filename="no_verify",
+        explanation="No verification",
+        verify_alignment=False
+    )
+    
+    assert result_no_verify["alignment_verified"] is False
+    assert result_no_verify["n_rows"] == 3
+    
+    # Test 6: Perfectly aligned datasets should pass verification
+    result_aligned = combine_datasets_horizontal(
+        project_manifest_path=manifest_path,
+        left_filename=left_file,
+        right_filename=right_file,
+        output_filename="aligned_test",
+        explanation="Test alignment verification passes",
+        verify_alignment=True
+    )
+    
+    assert result_aligned["alignment_verified"] is True
+    assert result_aligned["n_rows"] == 3
+    assert result_aligned["n_columns"] == 4
+
+
 def test_get_all_dataset_tools():
     """Test getting all dataset tools."""
     from molml_mcp.tools.core.dataset_ops import get_all_dataset_tools
