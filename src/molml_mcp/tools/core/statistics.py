@@ -46,38 +46,17 @@ def test_shapiro_wilk(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Perform Shapiro-Wilk test for normality on a dataset column.
-    
-    The Shapiro-Wilk test checks if data is normally distributed. It's most
-    appropriate for small to medium-sized samples (n < 5000).
-    
-    Null hypothesis (H0): The data is normally distributed.
-    - p-value > alpha: Fail to reject H0 (data appears normally distributed)
-    - p-value <= alpha: Reject H0 (data does not appear normally distributed)
+    Shapiro-Wilk test for normality (best for n < 5000).
+    H0: data is normally distributed.
     
     Args:
         input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column: Column name to test
+        project_manifest_path: Path to manifest.json
+        column: Column to test
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - statistic: W statistic from the test
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - is_normal: Boolean indicating if data appears normally distributed
-            - n_samples: Number of samples tested
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_shapiro_wilk(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     "molecular_weight"
-        ... )
-        >>> if result['is_normal']:
-        ...     print("Data is normally distributed")
+        Dictionary with statistic, p_value, alpha, is_normal, n_samples, interpretation, summary
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -139,39 +118,17 @@ def test_kolmogorov_smirnov_norm(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Perform Kolmogorov-Smirnov test for normality on a dataset column.
-    
-    The K-S test compares the empirical distribution with a normal distribution.
-    It's suitable for larger samples and is less sensitive than Shapiro-Wilk.
-    
-    Null hypothesis (H0): The data follows a normal distribution.
-    - p-value > alpha: Fail to reject H0 (data appears normally distributed)
-    - p-value <= alpha: Reject H0 (data does not appear normally distributed)
+    K-S test for normality (compares empirical distribution to normal).
+    H0: data follows normal distribution.
     
     Args:
         input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column: Column name to test
+        project_manifest_path: Path to manifest.json
+        column: Column to test
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - statistic: K-S statistic (maximum distance between distributions)
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - is_normal: Boolean indicating if data appears normally distributed
-            - n_samples: Number of samples tested
-            - mean: Sample mean
-            - std: Sample standard deviation
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_kolmogorov_smirnov(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     "logP",
-        ...     alpha=0.01
-        ... )
+        Dictionary with statistic, p_value, alpha, is_normal, n_samples, mean, std, interpretation, summary
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -236,40 +193,18 @@ def test_anderson_darling(
     significance_level: str = "5%"
 ) -> Dict:
     """
-    Perform Anderson-Darling test for normality on a dataset column.
-    
-    The Anderson-Darling test is more sensitive to deviations in the tails of
-    the distribution compared to K-S test. It provides critical values at
-    different significance levels (15%, 10%, 5%, 2.5%, 1%).
-    
-    Null hypothesis (H0): The data follows a normal distribution.
-    - statistic < critical_value: Fail to reject H0 (data appears normally distributed)
-    - statistic >= critical_value: Reject H0 (data does not appear normally distributed)
+    Anderson-Darling test for normality (more sensitive to tail deviations).
+    H0: data follows normal distribution.
     
     Args:
         input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column: Column name to test
+        project_manifest_path: Path to manifest.json
+        column: Column to test
         significance_level: One of "15%", "10%", "5%", "2.5%", "1%" (default: "5%")
         
     Returns:
-        Dictionary containing:
-            - statistic: Anderson-Darling statistic
-            - critical_values: Critical values at different significance levels
-            - significance_levels: Corresponding significance levels (as percentages)
-            - selected_alpha: The selected significance level
-            - critical_value: Critical value at selected significance level
-            - is_normal: Boolean indicating if data appears normally distributed
-            - n_samples: Number of samples tested
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_anderson_darling(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     "pIC50",
-        ...     significance_level="5%"
-        ... )
+        Dictionary with statistic, critical_values, significance_levels, selected_alpha, 
+        critical_value, is_normal, n_samples, interpretation, summary
     """
     # Validate significance level
     valid_levels = ["15%", "10%", "5%", "2.5%", "1%"]
@@ -354,47 +289,21 @@ def test_paired_ttest(
     alternative: str = "two-sided"
 ) -> Dict:
     """
-    Perform paired t-test comparing two related samples.
-    
-    The paired t-test checks if the mean difference between paired observations
-    is significantly different from zero. Assumes that the differences follow a
-    normal distribution. Use this when comparing before/after measurements or
-    matched pairs.
-    
-    Null hypothesis (H0): The mean difference between pairs is zero.
-    - p-value > alpha: Fail to reject H0 (no significant difference)
-    - p-value <= alpha: Reject H0 (significant difference exists)
+    Paired t-test for related samples (assumes normal distribution of differences).
+    H0: mean difference between pairs is zero.
     
     Args:
-        input_filename_a: First CSV dataset resource filename
-        input_filename_b: Second CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column_a: Column name in dataset A
-        column_b: Column name in dataset B
+        input_filename_a: First CSV dataset filename
+        input_filename_b: Second CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        column_a: Column in dataset A
+        column_b: Column in dataset B
         alpha: Significance level (default: 0.05)
-        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        alternative: "two-sided", "less", or "greater" (default: "two-sided")
         
     Returns:
-        Dictionary containing:
-            - statistic: t-statistic from the test
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - alternative: Type of test performed
-            - is_significant: Boolean indicating if difference is significant
-            - n_pairs: Number of paired samples
-            - mean_diff: Mean of differences (A - B)
-            - std_diff: Standard deviation of differences
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_paired_ttest(
-        ...     "before_treatment.csv",
-        ...     "after_treatment.csv",
-        ...     "manifest.json",
-        ...     "score",
-        ...     "score",
-        ...     alternative="greater"
-        ... )
+        Dictionary with statistic, p_value, alpha, alternative, is_significant, n_pairs,
+        mean_diff, std_diff, interpretation, summary
     """
     # Validate alternative
     valid_alternatives = ["two-sided", "less", "greater"]
@@ -518,48 +427,21 @@ def test_wilcoxon_signed_rank(
     alternative: str = "two-sided"
 ) -> Dict:
     """
-    Perform Wilcoxon signed-rank test comparing two related samples.
-    
-    The Wilcoxon signed-rank test is a non-parametric alternative to the paired
-    t-test. It tests whether the median difference between pairs is zero, without
-    assuming normality. Use this when data is not normally distributed or when
-    dealing with ordinal data.
-    
-    Null hypothesis (H0): The median difference between pairs is zero.
-    - p-value > alpha: Fail to reject H0 (no significant difference)
-    - p-value <= alpha: Reject H0 (significant difference exists)
+    Wilcoxon signed-rank test for related samples (non-parametric alternative to paired t-test).
+    H0: median difference between pairs is zero.
     
     Args:
-        input_filename_a: First CSV dataset resource filename
-        input_filename_b: Second CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column_a: Column name in dataset A
-        column_b: Column name in dataset B
+        input_filename_a: First CSV dataset filename
+        input_filename_b: Second CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        column_a: Column in dataset A
+        column_b: Column in dataset B
         alpha: Significance level (default: 0.05)
-        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        alternative: "two-sided", "less", or "greater" (default: "two-sided")
         
     Returns:
-        Dictionary containing:
-            - statistic: W statistic (sum of positive ranks)
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - alternative: Type of test performed
-            - is_significant: Boolean indicating if difference is significant
-            - n_pairs: Number of paired samples
-            - median_diff: Median of differences (A - B)
-            - n_positive: Number of positive differences
-            - n_negative: Number of negative differences
-            - n_zero: Number of zero differences (excluded from test)
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_wilcoxon_signed_rank(
-        ...     "before.csv",
-        ...     "after.csv",
-        ...     "manifest.json",
-        ...     "rank",
-        ...     "rank"
-        ... )
+        Dictionary with statistic, p_value, alpha, alternative, is_significant, n_pairs,
+        median_diff, n_positive, n_negative, n_zero, interpretation, summary
     """
     # Validate alternative
     valid_alternatives = ["two-sided", "less", "greater"]
@@ -685,47 +567,20 @@ def test_pearson_correlation(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Calculate Pearson correlation coefficient between two variables.
-    
-    Pearson correlation measures the linear relationship between two continuous
-    variables. It assumes that both variables are normally distributed and tests
-    whether the correlation is significantly different from zero.
-    
-    Correlation coefficient (r) ranges from -1 to 1:
-    - r = 1: Perfect positive linear correlation
-    - r = 0: No linear correlation
-    - r = -1: Perfect negative linear correlation
-    
-    Null hypothesis (H0): The correlation is zero (no linear relationship).
-    - p-value > alpha: Fail to reject H0 (no significant correlation)
-    - p-value <= alpha: Reject H0 (significant correlation exists)
+    Pearson correlation for linear relationship (assumes normality). r ∈ [-1, 1].
+    H0: no linear correlation (r = 0). Strength: |r| < 0.3 weak, 0.3-0.7 moderate, ≥0.7 strong.
     
     Args:
-        input_filename_a: First CSV dataset resource filename
-        input_filename_b: Second CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column_a: Column name in dataset A
-        column_b: Column name in dataset B
+        input_filename_a: First CSV dataset filename
+        input_filename_b: Second CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        column_a: Column in dataset A
+        column_b: Column in dataset B
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - correlation: Pearson correlation coefficient (r)
-            - p_value: p-value testing if correlation is significantly different from 0
-            - alpha: Significance level used
-            - is_significant: Boolean indicating if correlation is significant
-            - n_samples: Number of paired samples
-            - interpretation: Human-readable interpretation
-            - strength: Qualitative strength assessment
-            
-    Example:
-        >>> result = test_pearson_correlation(
-        ...     "dataset_x.csv",
-        ...     "dataset_y.csv",
-        ...     "manifest.json",
-        ...     "variable_x",
-        ...     "variable_y"
-        ... )
+        Dictionary with correlation, p_value, alpha, is_significant, n_samples,
+        strength, direction, interpretation, summary
     """
     # Load datasets
     df_a = _load_resource(project_manifest_path, input_filename_a)
@@ -822,48 +677,20 @@ def test_spearman_correlation(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Calculate Spearman rank correlation coefficient between two variables.
-    
-    Spearman correlation measures monotonic relationships (whether variables
-    tend to change together, not necessarily linearly). It's a non-parametric
-    measure based on ranks, so it doesn't assume normality and is robust to
-    outliers.
-    
-    Correlation coefficient (ρ or rho) ranges from -1 to 1:
-    - ρ = 1: Perfect monotonic increasing relationship
-    - ρ = 0: No monotonic relationship
-    - ρ = -1: Perfect monotonic decreasing relationship
-    
-    Null hypothesis (H0): The correlation is zero (no monotonic relationship).
-    - p-value > alpha: Fail to reject H0 (no significant correlation)
-    - p-value <= alpha: Reject H0 (significant correlation exists)
+    Spearman rank correlation for monotonic relationship (non-parametric). ρ ∈ [-1, 1].
+    H0: no monotonic correlation (ρ = 0). Strength: |ρ| < 0.3 weak, 0.3-0.7 moderate, ≥0.7 strong.
     
     Args:
-        input_filename_a: First CSV dataset resource filename
-        input_filename_b: Second CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column_a: Column name in dataset A
-        column_b: Column name in dataset B
+        input_filename_a: First CSV dataset filename
+        input_filename_b: Second CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        column_a: Column in dataset A
+        column_b: Column in dataset B
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - correlation: Spearman correlation coefficient (ρ)
-            - p_value: p-value testing if correlation is significantly different from 0
-            - alpha: Significance level used
-            - is_significant: Boolean indicating if correlation is significant
-            - n_samples: Number of paired samples
-            - interpretation: Human-readable interpretation
-            - strength: Qualitative strength assessment
-            
-    Example:
-        >>> result = test_spearman_correlation(
-        ...     "dataset_x.csv",
-        ...     "dataset_y.csv",
-        ...     "manifest.json",
-        ...     "rank_x",
-        ...     "rank_y"
-        ... )
+        Dictionary with correlation, p_value, alpha, is_significant, n_samples,
+        strength, direction, interpretation, summary
     """
     # Load datasets
     df_a = _load_resource(project_manifest_path, input_filename_a)
@@ -961,48 +788,21 @@ def test_independent_ttest(
     alternative: str = "two-sided"
 ) -> Dict:
     """
-    Perform independent samples t-test (Welch's version) comparing two independent groups.
-    
-    Welch's t-test compares means of two independent samples without assuming equal
-    variances. Use this when comparing two different groups (not paired measurements).
-    Assumes both samples are normally distributed.
-    
-    Null hypothesis (H0): The two groups have equal means.
-    - p-value > alpha: Fail to reject H0 (no significant difference)
-    - p-value <= alpha: Reject H0 (significant difference exists)
+    Welch's t-test for independent samples (assumes normality, not equal variances).
+    H0: groups have equal means. Effect size: Cohen's d.
     
     Args:
-        input_filename_a: First CSV dataset resource filename
-        input_filename_b: Second CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column_a: Column name in dataset A
-        column_b: Column name in dataset B
+        input_filename_a: First CSV dataset filename
+        input_filename_b: Second CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        column_a: Column in dataset A
+        column_b: Column in dataset B
         alpha: Significance level (default: 0.05)
-        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        alternative: "two-sided", "less", or "greater" (default: "two-sided")
         
     Returns:
-        Dictionary containing:
-            - statistic: t-statistic from the test
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - alternative: Type of test performed
-            - is_significant: Boolean indicating if difference is significant
-            - n_a: Number of samples in group A
-            - n_b: Number of samples in group B
-            - mean_a: Mean of group A
-            - mean_b: Mean of group B
-            - std_a: Standard deviation of group A
-            - std_b: Standard deviation of group B
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_independent_ttest(
-        ...     "control_group.csv",
-        ...     "treatment_group.csv",
-        ...     "manifest.json",
-        ...     "measurement",
-        ...     "measurement"
-        ... )
+        Dictionary with statistic, p_value, alpha, alternative, is_significant, n_a, n_b,
+        mean_a, mean_b, std_a, std_b, cohens_d, effect_size, interpretation, summary
     """
     # Validate alternative
     valid_alternatives = ["two-sided", "less", "greater"]
@@ -1135,46 +935,21 @@ def test_mann_whitney_u(
     alternative: str = "two-sided"
 ) -> Dict:
     """
-    Perform Mann-Whitney U test comparing two independent samples.
-    
-    The Mann-Whitney U test (also called Wilcoxon rank-sum test) is a non-parametric
-    test that compares the distributions of two independent samples. It tests whether
-    one distribution is stochastically greater than the other. Does not assume normality.
-    
-    Null hypothesis (H0): The two samples come from the same distribution.
-    - p-value > alpha: Fail to reject H0 (no significant difference)
-    - p-value <= alpha: Reject H0 (significant difference exists)
+    Mann-Whitney U test for independent samples (non-parametric). Effect size: Cliff's delta.
+    H0: samples from same distribution.
     
     Args:
-        input_filename_a: First CSV dataset resource filename
-        input_filename_b: Second CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column_a: Column name in dataset A
-        column_b: Column name in dataset B
+        input_filename_a: First CSV dataset filename
+        input_filename_b: Second CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        column_a: Column in dataset A
+        column_b: Column in dataset B
         alpha: Significance level (default: 0.05)
-        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        alternative: "two-sided", "less", or "greater" (default: "two-sided")
         
     Returns:
-        Dictionary containing:
-            - statistic: U statistic from the test
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - alternative: Type of test performed
-            - is_significant: Boolean indicating if difference is significant
-            - n_a: Number of samples in group A
-            - n_b: Number of samples in group B
-            - median_a: Median of group A
-            - median_b: Median of group B
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_mann_whitney_u(
-        ...     "group1.csv",
-        ...     "group2.csv",
-        ...     "manifest.json",
-        ...     "score",
-        ...     "score"
-        ... )
+        Dictionary with statistic, p_value, alpha, alternative, is_significant, n_a, n_b,
+        median_a, median_b, cliffs_delta, effect_size, interpretation, summary
     """
     # Validate alternative
     valid_alternatives = ["two-sided", "less", "greater"]
@@ -1307,44 +1082,21 @@ def test_kolmogorov_smirnov_two_sample(
     alternative: str = "two-sided"
 ) -> Dict:
     """
-    Perform two-sample Kolmogorov-Smirnov test comparing distributions.
-    
-    The two-sample K-S test compares the empirical cumulative distribution functions
-    of two samples. It tests whether the two samples come from the same distribution.
-    Non-parametric and sensitive to any differences in distribution (location, shape, spread).
-    
-    Null hypothesis (H0): The two samples come from the same distribution.
-    - p-value > alpha: Fail to reject H0 (distributions are similar)
-    - p-value <= alpha: Reject H0 (distributions are different)
+    Two-sample K-S test comparing distributions (non-parametric).
+    H0: samples from same distribution.
     
     Args:
-        input_filename_a: First CSV dataset resource filename
-        input_filename_b: Second CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column_a: Column name in dataset A
-        column_b: Column name in dataset B
+        input_filename_a: First CSV dataset filename
+        input_filename_b: Second CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        column_a: Column in dataset A
+        column_b: Column in dataset B
         alpha: Significance level (default: 0.05)
-        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        alternative: "two-sided", "less", or "greater" (default: "two-sided")
         
     Returns:
-        Dictionary containing:
-            - statistic: K-S statistic (maximum distance between CDFs)
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - alternative: Type of test performed
-            - is_significant: Boolean indicating if distributions differ
-            - n_a: Number of samples in group A
-            - n_b: Number of samples in group B
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_kolmogorov_smirnov_two_sample(
-        ...     "distribution1.csv",
-        ...     "distribution2.csv",
-        ...     "manifest.json",
-        ...     "values",
-        ...     "values"
-        ... )
+        Dictionary with statistic, p_value, alpha, alternative, is_significant, n_a, n_b,
+        interpretation, summary
     """
     # Validate alternative
     valid_alternatives = ["two-sided", "less", "greater"]
@@ -1445,39 +1197,18 @@ def test_one_way_anova(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Perform one-way ANOVA comparing means across multiple groups.
-    
-    One-way ANOVA tests whether there are any significant differences between the
-    means of three or more independent groups. Assumes normality and equal variances.
-    
-    Null hypothesis (H0): All group means are equal.
-    - p-value > alpha: Fail to reject H0 (no significant differences)
-    - p-value <= alpha: Reject H0 (at least one group differs)
+    One-way ANOVA for comparing means across ≥3 groups (assumes normality, equal variances).
+    H0: all group means are equal. Effect size: eta-squared.
     
     Args:
-        input_filenames: List of CSV dataset resource filenames (one per group)
-        project_manifest_path: Path to project manifest.json
-        columns: List of column names (one per dataset, in same order)
+        input_filenames: List of CSV dataset filenames (one per group)
+        project_manifest_path: Path to manifest.json
+        columns: List of column names (one per dataset)
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - statistic: F-statistic from the test
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - is_significant: Boolean indicating if groups differ
-            - n_groups: Number of groups
-            - group_sizes: List of sample sizes per group
-            - group_means: List of means per group
-            - group_stds: List of standard deviations per group
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_one_way_anova(
-        ...     ["control.csv", "treatment1.csv", "treatment2.csv"],
-        ...     "manifest.json",
-        ...     ["score", "score", "score"]
-        ... )
+        Dictionary with statistic, p_value, alpha, is_significant, n_groups, group_sizes,
+        group_means, group_stds, eta_squared, effect_size, interpretation, summary
     """
     if len(input_filenames) < 2:
         raise ValueError(f"Need at least 2 groups for ANOVA. Got: {len(input_filenames)}")
@@ -1575,38 +1306,18 @@ def test_kruskal_wallis(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Perform Kruskal-Wallis H-test comparing distributions across multiple groups.
-    
-    The Kruskal-Wallis test is a non-parametric alternative to one-way ANOVA. It tests
-    whether samples originate from the same distribution. Does not assume normality.
-    
-    Null hypothesis (H0): All groups have the same distribution.
-    - p-value > alpha: Fail to reject H0 (no significant differences)
-    - p-value <= alpha: Reject H0 (at least one group differs)
+    Kruskal-Wallis H-test for comparing distributions across ≥2 groups (non-parametric).
+    H0: all groups have same distribution. Effect size: epsilon-squared.
     
     Args:
-        input_filenames: List of CSV dataset resource filenames (one per group)
-        project_manifest_path: Path to project manifest.json
-        columns: List of column names (one per dataset, in same order)
+        input_filenames: List of CSV dataset filenames (one per group)
+        project_manifest_path: Path to manifest.json
+        columns: List of column names (one per dataset)
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - statistic: H-statistic from the test
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - is_significant: Boolean indicating if groups differ
-            - n_groups: Number of groups
-            - group_sizes: List of sample sizes per group
-            - group_medians: List of medians per group
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_kruskal_wallis(
-        ...     ["group1.csv", "group2.csv", "group3.csv"],
-        ...     "manifest.json",
-        ...     ["rank", "rank", "rank"]
-        ... )
+        Dictionary with statistic, p_value, alpha, is_significant, n_groups, group_sizes,
+        group_medians, epsilon_squared, effect_size, interpretation, summary
     """
     if len(input_filenames) < 2:
         raise ValueError(f"Need at least 2 groups for Kruskal-Wallis. Got: {len(input_filenames)}")
@@ -1700,42 +1411,19 @@ def test_chi_square(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Perform chi-square test of independence for categorical variables.
-    
-    The chi-square test assesses whether two categorical variables are independent
-    or associated. It compares observed frequencies with expected frequencies under
-    the assumption of independence.
-    
-    Null hypothesis (H0): The two variables are independent.
-    - p-value > alpha: Fail to reject H0 (variables are independent)
-    - p-value <= alpha: Reject H0 (variables are associated)
+    Chi-square test of independence for categorical variables.
+    H0: variables are independent. Effect size: Cramér's V.
     
     Args:
-        input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column_a: First categorical column name
-        column_b: Second categorical column name
+        input_filename: CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        column_a: First categorical column
+        column_b: Second categorical column
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - statistic: Chi-square statistic
-            - p_value: p-value from the test
-            - degrees_of_freedom: Degrees of freedom
-            - alpha: Significance level used
-            - is_significant: Boolean indicating if association is significant
-            - cramers_v: Cramér's V effect size
-            - effect_size: Qualitative effect size interpretation
-            - contingency_table: Observed frequencies as nested dict
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_chi_square(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     "treatment_group",
-        ...     "outcome"
-        ... )
+        Dictionary with statistic, p_value, degrees_of_freedom, alpha, is_significant,
+        cramers_v, effect_size, contingency_table, interpretation, summary
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -1838,42 +1526,20 @@ def test_fisher_exact(
     alternative: str = "two-sided"
 ) -> Dict:
     """
-    Perform Fisher's exact test for 2x2 contingency tables.
-    
-    Fisher's exact test is used for categorical data with small sample sizes where
-    chi-square assumptions may be violated. It calculates the exact probability of
-    observing the data (or more extreme) under the null hypothesis. Only works with
-    2x2 tables (both variables must have exactly 2 categories).
-    
-    Null hypothesis (H0): The two variables are independent.
-    - p-value > alpha: Fail to reject H0 (variables are independent)
-    - p-value <= alpha: Reject H0 (variables are associated)
+    Fisher's exact test for 2x2 tables (exact test for small samples).
+    H0: variables are independent. Effect size: odds ratio.
     
     Args:
-        input_filename: CSV dataset resource filename
-        project_manifest_path: Path to project manifest.json
-        column_a: First categorical column name (must have exactly 2 categories)
-        column_b: Second categorical column name (must have exactly 2 categories)
+        input_filename: CSV dataset filename
+        project_manifest_path: Path to manifest.json
+        column_a: First categorical column (2 categories)
+        column_b: Second categorical column (2 categories)
         alpha: Significance level (default: 0.05)
-        alternative: Type of test - "two-sided", "less", or "greater" (default: "two-sided")
+        alternative: "two-sided", "less", or "greater" (default: "two-sided")
         
     Returns:
-        Dictionary containing:
-            - p_value: Exact p-value from the test
-            - odds_ratio: Odds ratio effect size
-            - alpha: Significance level used
-            - alternative: Type of test performed
-            - is_significant: Boolean indicating if association is significant
-            - contingency_table: Observed frequencies as nested dict
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_fisher_exact(
-        ...     "dataset.csv",
-        ...     "manifest.json",
-        ...     "treatment",
-        ...     "response"
-        ... )
+        Dictionary with p_value, odds_ratio, alpha, alternative, is_significant,
+        effect_size, contingency_table, interpretation, summary
     """
     # Validate alternative
     valid_alternatives = ["two-sided", "less", "greater"]
@@ -2015,45 +1681,20 @@ def test_mcnemar(
     alpha: float = 0.05
 ) -> Dict:
     """
-    Perform McNemar's test for paired categorical data.
-    
-    McNemar's test is used for paired nominal data (before/after designs) to determine
-    whether the row and column marginal frequencies are equal. It tests for changes in
-    proportions for paired observations. Both variables must be binary (2 categories).
-    
-    Null hypothesis (H0): The marginal proportions are equal (no change).
-    - p-value > alpha: Fail to reject H0 (no significant change)
-    - p-value <= alpha: Reject H0 (significant change detected)
+    McNemar's test for paired binary categorical data (before/after changes).
+    H0: marginal proportions are equal. Effect size: odds ratio.
     
     Args:
-        input_filename_before: CSV dataset resource filename for "before" measurements
-        input_filename_after: CSV dataset resource filename for "after" measurements
-        project_manifest_path: Path to project manifest.json
-        column_before: Column name in "before" dataset (must be binary)
-        column_after: Column name in "after" dataset (must be binary)
+        input_filename_before: CSV dataset filename for "before"
+        input_filename_after: CSV dataset filename for "after"
+        project_manifest_path: Path to manifest.json
+        column_before: Column in "before" dataset (binary)
+        column_after: Column in "after" dataset (binary)
         alpha: Significance level (default: 0.05)
         
     Returns:
-        Dictionary containing:
-            - statistic: Chi-square statistic from McNemar's test
-            - p_value: p-value from the test
-            - alpha: Significance level used
-            - is_significant: Boolean indicating if change is significant
-            - n_pairs: Number of paired observations
-            - n_concordant: Pairs with same value before and after
-            - n_discordant: Pairs with different values before and after
-            - odds_ratio: Odds ratio for change (b/c ratio)
-            - contingency_table: 2x2 table of paired responses
-            - interpretation: Human-readable interpretation
-            
-    Example:
-        >>> result = test_mcnemar(
-        ...     "before_treatment.csv",
-        ...     "after_treatment.csv",
-        ...     "manifest.json",
-        ...     "symptom_present",
-        ...     "symptom_present"
-        ... )
+        Dictionary with statistic, p_value, alpha, is_significant, n_pairs, n_concordant,
+        n_discordant, odds_ratio, effect_size, contingency_table, interpretation, summary
     """
     # Load datasets
     df_before = _load_resource(project_manifest_path, input_filename_before)
@@ -2209,15 +1850,7 @@ def test_mcnemar(
 
 def get_all_statistical_test_tools():
     """
-    Returns a list of all MCP-exposed statistical test functions for server registration.
-    
-    Includes:
-    - Normality tests: Shapiro-Wilk, Kolmogorov-Smirnov, Anderson-Darling
-    - Paired comparison tests: Paired t-test, Wilcoxon signed-rank
-    - Correlation tests: Pearson, Spearman
-    - Independent sample tests: Independent t-test (Welch's), Mann-Whitney U, Two-sample K-S
-    - Multi-group tests: One-way ANOVA, Kruskal-Wallis
-    - Categorical tests: Chi-square test of independence, Fisher's exact test, McNemar's test
+    Returns all MCP-exposed statistical test functions.
     """
     return [
         # Normality tests
