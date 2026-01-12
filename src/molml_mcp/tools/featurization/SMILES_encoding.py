@@ -119,16 +119,6 @@ def discover_tokens_from_dataset(
             - tokens: List of dicts with 'token' and 'count' keys, sorted by frequency
             - top_tokens: Top 20 most frequent tokens (for quick inspection)
             - min_frequency: Minimum frequency filter applied
-            
-    Example:
-        >>> result = discover_tokens_from_dataset(
-        ...     "molecules_A1B2C3D4.csv",
-        ...     "/path/to/manifest.json",
-        ...     "smiles",
-        ...     min_frequency=10
-        ... )
-        >>> print(f"Found {result['n_unique_tokens']} unique tokens")
-        >>> print(f"Top token: {result['top_tokens'][0]}")
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
@@ -372,8 +362,6 @@ def smiles_to_one_hot(
     """
     Convert SMILES string to one-hot encoded matrix using vocab from JSON.
     
-    MCP-friendly version that loads vocab from JSON and optionally saves output.
-    
     Args:
         smiles: SMILES string to encode
         vocab_filename: Vocab JSON resource filename
@@ -387,16 +375,6 @@ def smiles_to_one_hot(
             - shape: Tuple (max_length, vocab_size)
             - tokens: List of tokens
             - output_filename: Saved resource filename (if output_filename provided)
-        
-    Example:
-        >>> result = smiles_to_one_hot(
-        ...     'CC',
-        ...     'my_vocab.json',
-        ...     'manifest.json',
-        ...     max_length=3,
-        ...     output_filename='cc_onehot'
-        ... )
-        >>> print(result['shape'])  # (3, 45)
     """
     # Load vocab
     vocab, special_tokens = load_vocab_from_json(vocab_filename, project_manifest_path)
@@ -446,8 +424,6 @@ def batch_smiles_to_one_hot(
     """
     Convert a batch of SMILES from dataset to one-hot encoded 3D array.
     
-    MCP-friendly version that loads SMILES from dataset and vocab from JSON.
-    
     Args:
         input_filename: CSV dataset resource filename
         project_manifest_path: Path to project manifest.json
@@ -464,16 +440,6 @@ def batch_smiles_to_one_hot(
             - n_smiles: Number of SMILES encoded
             - max_length: Maximum length used
             - vocab_size: Size of vocabulary
-        
-    Example:
-        >>> result = batch_smiles_to_one_hot(
-        ...     'molecules.csv',
-        ...     'manifest.json',
-        ...     'SMILES',
-        ...     'my_vocab.json',
-        ...     'batch_onehot'
-        ... )
-        >>> print(result['shape'])  # (100, 50, 45)
     """
     # Load dataset
     df = _load_resource(project_manifest_path, input_filename)
