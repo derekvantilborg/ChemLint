@@ -1111,6 +1111,68 @@ def merge_datasets_on_smiles(
     }
 
 
+def read_txt(input_filename: str, project_manifest_path: str) -> Dict[str, str]:
+    """
+    Read a text file from project resources and return its contents.
+    
+    Parameters
+    ----------
+    input_filename : str
+        Text file name from manifest.
+    project_manifest_path : str
+        Path to project manifest.json.
+        
+    Returns
+    -------
+    dict
+        Contains 'content' (text content) and 'filename'.
+    """
+    content = _load_resource(project_manifest_path, input_filename)
+    
+    if not isinstance(content, str):
+        raise ValueError(f"Expected text content, got {type(content).__name__}")
+    
+    return {
+        "filename": input_filename,
+        "content": content,
+        "n_chars": len(content),
+        "n_lines": content.count('\n') + 1 if content else 0
+    }
+
+
+def read_json(input_filename: str, project_manifest_path: str) -> Dict[str, Any]:
+    """
+    Read a JSON file from project resources and return its contents as formatted text.
+    
+    Parameters
+    ----------
+    input_filename : str
+        JSON file name from manifest.
+    project_manifest_path : str
+        Path to project manifest.json.
+        
+    Returns
+    -------
+    dict
+        Contains 'data' (parsed JSON object), 'formatted_text' (pretty-printed JSON), and 'filename'.
+    """
+    import json
+    
+    data = _load_resource(project_manifest_path, input_filename)
+    
+    if not isinstance(data, (dict, list)):
+        raise ValueError(f"Expected JSON data (dict/list), got {type(data).__name__}")
+    
+    formatted_text = json.dumps(data, indent=2, ensure_ascii=False)
+    
+    return {
+        "filename": input_filename,
+        "data": data,
+        "formatted_text": formatted_text,
+        "type": type(data).__name__
+    }
+
+
 def get_all_dataset_tools():
     """Return a list of all dataset manipulation tools."""
     return [
@@ -1129,5 +1191,7 @@ def get_all_dataset_tools():
         transform_column,
         combine_datasets_vertical,
         combine_datasets_horizontal,
-        merge_datasets_on_smiles
+        merge_datasets_on_smiles,
+        read_txt,
+        read_json
     ]

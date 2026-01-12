@@ -1087,3 +1087,160 @@ def test_get_all_dataset_tools():
     
     assert isinstance(tools, list)
     assert len(tools) > 0
+
+
+def test_read_txt(session_workdir, request):
+    """Test reading text files from project resources."""
+    from molml_mcp.tools.core.dataset_ops import read_txt
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
+    
+    # Store a text file
+    test_content = "This is a test report.\nLine 2.\nLine 3."
+    txt_filename = _store_resource(
+        test_content,
+        manifest_path,
+        "test_report",
+        "Test text report",
+        'txt'
+    )
+    
+    # Read the text file
+    result = read_txt(txt_filename, manifest_path)
+    
+    assert "filename" in result
+    assert result["filename"] == txt_filename
+    assert "content" in result
+    assert result["content"] == test_content
+    assert "n_chars" in result
+    assert result["n_chars"] == len(test_content)
+    assert "n_lines" in result
+    assert result["n_lines"] == 3
+
+
+def test_read_json(session_workdir, request):
+    """Test reading JSON files from project resources."""
+    from molml_mcp.tools.core.dataset_ops import read_json
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    import json
+    
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
+    
+    # Store a JSON file
+    test_data = {
+        "analysis": "scaffold_report",
+        "n_molecules": 1000,
+        "n_scaffolds": 150,
+        "metrics": {
+            "gini": 0.45,
+            "shannon": 3.2
+        }
+    }
+    json_filename = _store_resource(
+        test_data,
+        manifest_path,
+        "test_analysis",
+        "Test JSON data",
+        'json'
+    )
+    
+    # Read the JSON file
+    result = read_json(json_filename, manifest_path)
+    
+    assert "filename" in result
+    assert result["filename"] == json_filename
+    assert "data" in result
+    assert result["data"] == test_data
+    assert "formatted_text" in result
+    assert isinstance(result["formatted_text"], str)
+    # Verify it's valid JSON
+    parsed = json.loads(result["formatted_text"])
+    assert parsed == test_data
+    assert "type" in result
+    assert result["type"] == "dict"
+
+
+def test_read_json_list(session_workdir, request):
+    """Test reading JSON files containing lists."""
+    from molml_mcp.tools.core.dataset_ops import read_json
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
+    
+    # Store a list as JSON
+    test_data = [
+        {"scaffold": "c1ccccc1", "count": 50},
+        {"scaffold": "CCO", "count": 30}
+    ]
+    json_filename = _store_resource(
+        test_data,
+        manifest_path,
+        "test_list",
+        "Test list data",
+        'json'
+    )
+    
+    # Read the JSON file
+    result = read_json(json_filename, manifest_path)
+    
+    assert result["data"] == test_data
+    assert result["type"] == "list"
+
+
+def test_read_txt_invalid_type(session_workdir, request):
+    """Test error handling when reading wrong resource type as text."""
+    from molml_mcp.tools.core.dataset_ops import read_txt
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    import pandas as pd
+    
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
+    
+    # Store a CSV file (DataFrame)
+    df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
+    csv_filename = _store_resource(df, manifest_path, "test_csv", "Test CSV", 'csv')
+    
+    # Try to read as text - should fail
+    with pytest.raises(ValueError, match="Expected text content"):
+        read_txt(csv_filename, manifest_path)
+
+
+def test_read_json_invalid_type(session_workdir, request):
+    """Test error handling when reading wrong resource type as JSON."""
+    from molml_mcp.tools.core.dataset_ops import read_json
+    from molml_mcp.infrastructure.resources import _store_resource, create_project_manifest
+    
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
+    
+    # Store a text file
+    txt_filename = _store_resource("Plain text", manifest_path, "test_txt", "Test text", 'txt')
+    
+    # Try to read as JSON - should fail
+    with pytest.raises(ValueError, match="Expected JSON data"):
+        read_json(txt_filename, manifest_path)
+
