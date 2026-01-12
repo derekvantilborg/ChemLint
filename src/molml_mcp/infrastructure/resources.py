@@ -580,6 +580,98 @@ def check_default_data_dir() -> str:
     return str(DATA_ROOT)
 
 
+def check_data_directory_content(data_directory_path: str) -> dict[str, Any]:
+    """Check contents of a data directory and organize files by their project manifest.
+    
+    Scans a directory for manifest files and lists all tracked resources belonging to
+    each project. Files not tracked in any manifest are not listed.
+    
+    Parameters
+    ----------
+    data_directory_path : str
+        Path to directory to inspect
+        
+    Returns
+    -------
+    dict
+        Contains:
+        - n_projects: Number of project manifests found
+        - projects: List of dicts with 'manifest_path', 'project_name', 'n_resources', and 'resources'
+        - message: Summary message
+    """
+    import json
+    from pathlib import Path
+    
+    data_dir = Path(data_directory_path)
+    
+    # Check if directory exists
+    if not data_dir.exists():
+        return {
+            "n_projects": 0,
+            "projects": [],
+            "message": f"Directory does not exist: {data_directory_path}"
+        }
+    
+    if not data_dir.is_dir():
+        return {
+            "n_projects": 0,
+            "projects": [],
+            "message": f"Path is not a directory: {data_directory_path}"
+        }
+    
+    # Find all manifest files
+    manifest_files = list(data_dir.glob("*_manifest.json"))
+    
+    if len(manifest_files) == 0:
+        return {
+            "n_projects": 0,
+            "projects": [],
+            "message": f"No project manifests found in {data_directory_path}"
+        }
+    
+    # Process each manifest
+    projects = []
+    for manifest_path in manifest_files:
+        try:
+            with open(manifest_path, "r") as f:
+                manifest = json.load(f)
+            
+            project_name = manifest.get("project_name", "Unknown")
+            resources = manifest.get("resources", [])
+            
+            # List resource filenames
+            resource_list = [res["filename"] for res in resources]
+            
+            projects.append({
+                "manifest_path": str(manifest_path),
+                "project_name": project_name,
+                "n_resources": len(resources),
+                "resources": resource_list
+            })
+        except Exception as e:
+            # If manifest is corrupted, note it
+            projects.append({
+                "manifest_path": str(manifest_path),
+                "project_name": "Error reading manifest",
+                "n_resources": 0,
+                "resources": [],
+                "error": str(e)
+            })
+    
+    # Generate summary message
+    if len(projects) == 1:
+        message = f"Found 1 project with {projects[0]['n_resources']} tracked resources"
+    else:
+        total_resources = sum(p['n_resources'] for p in projects)
+        message = f"Found {len(projects)} projects with {total_resources} total tracked resources"
+    
+    return {
+        "n_projects": len(projects),
+        "projects": projects,
+        "message": message
+    }
+
+
 def get_all_resources_tools() -> list[Callable]:
     """Return list of all resource management tools for MCP server."""
     return [
@@ -589,5 +681,6 @@ def get_all_resources_tools() -> list[Callable]:
         remove_from_project_manifest,
         list_untracked_resources_in_project,
         get_supported_resource_types,
-        check_default_data_dir
+        check_default_data_dir,
+        check_data_directory_content
     ]

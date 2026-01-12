@@ -175,3 +175,104 @@ def test_create_manifest_twice_fails(session_workdir):
     
     with pytest.raises(FileExistsError):
         create_project_manifest(str(session_workdir), "duplicate_test")
+
+
+def test_check_data_directory_content_with_projects(session_workdir):
+    from molml_mcp.infrastructure.resources import (
+        create_project_manifest, 
+        _store_resource,
+        check_data_directory_content
+    )
+    import pandas as pd
+    
+    # Create isolated test directory
+    test_dir = session_workdir / "test_check_content"
+    test_dir.mkdir()
+    
+    # Create two projects with resources
+    manifest1 = str(test_dir / "project1_manifest.json")
+    manifest2 = str(test_dir / "project2_manifest.json")
+    
+    create_project_manifest(str(test_dir), "project1")
+    create_project_manifest(str(test_dir), "project2")
+    
+    # Add resources to project1
+    df1 = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+    _store_resource(df1, manifest1, "data1", "First dataset", "csv")
+    _store_resource(df1, manifest1, "data2", "Second dataset", "csv")
+    
+    # Add resource to project2
+    df2 = pd.DataFrame({"x": [5, 6]})
+    _store_resource(df2, manifest2, "data3", "Third dataset", "csv")
+    
+    # Check directory content
+    result = check_data_directory_content(str(test_dir))
+    
+    assert result["n_projects"] == 2
+    assert len(result["projects"]) == 2
+    assert "Found 2 projects" in result["message"]
+    
+    # Verify project details
+    project_names = {p["project_name"] for p in result["projects"]}
+    assert project_names == {"project1", "project2"}
+    
+    # Find project1 and verify its resources
+    project1 = next(p for p in result["projects"] if p["project_name"] == "project1")
+    assert project1["n_resources"] == 2
+    assert len(project1["resources"]) == 2
+    
+    # Find project2 and verify its resources
+    project2 = next(p for p in result["projects"] if p["project_name"] == "project2")
+    assert project2["n_resources"] == 1
+    assert len(project2["resources"]) == 1
+
+
+def test_check_data_directory_content_no_manifests(session_workdir):
+    from molml_mcp.infrastructure.resources import check_data_directory_content
+    
+    # Create empty directory
+    empty_dir = session_workdir / "empty"
+    empty_dir.mkdir()
+    
+    result = check_data_directory_content(str(empty_dir))
+    
+    assert result["n_projects"] == 0
+    assert result["projects"] == []
+    assert "No project manifests found" in result["message"]
+
+
+def test_check_data_directory_content_nonexistent(session_workdir):
+    from molml_mcp.infrastructure.resources import check_data_directory_content
+    
+    result = check_data_directory_content(str(session_workdir / "nonexistent"))
+    
+    assert result["n_projects"] == 0
+    assert result["projects"] == []
+    assert "does not exist" in result["message"]
+
+
+def test_check_data_directory_content_single_project(session_workdir):
+    from molml_mcp.infrastructure.resources import (
+        create_project_manifest,
+        _store_resource,
+        check_data_directory_content
+    )
+    import pandas as pd
+    
+    # Create isolated test directory
+    test_dir = session_workdir / "test_single_project"
+    test_dir.mkdir()
+    
+    manifest = str(test_dir / "solo_manifest.json")
+    create_project_manifest(str(test_dir), "solo")
+    
+    # Add some resources
+    df = pd.DataFrame({"x": [1, 2, 3]})
+    _store_resource(df, manifest, "data1", "Dataset 1", "csv")
+    _store_resource(df, manifest, "data2", "Dataset 2", "csv")
+    _store_resource(df, manifest, "data3", "Dataset 3", "csv")
+    
+    result = check_data_directory_content(str(test_dir))
+    
+    assert result["n_projects"] == 1
+    assert "Found 1 project with 3 tracked resources" in result["message"]
