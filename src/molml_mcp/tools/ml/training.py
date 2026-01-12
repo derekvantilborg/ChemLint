@@ -18,6 +18,42 @@ def train_single_ml_model(
 ) -> dict:
     """
     Train single ML model on molecular data.
+
+    All available model_algorithm options:
+
+        random_forest_classifier
+        gradient_boosting_classifier
+        logistic_regression
+        svc
+        knn_classifier
+        decision_tree_classifier
+        adaboost_classifier
+        extra_trees_classifier
+        naive_bayes
+        lda_classifier
+        sgd_classifier
+        random_forest_classifier_w_uncertainty
+        gradient_boosting_classifier_w_uncertainty
+        logistic_regression_w_uncertainty
+        decision_tree_classifier_w_uncertainty
+        adaboost_classifier_w_uncertainty
+        extra_trees_classifier_w_uncertainty
+        random_forest_regressor
+        gradient_boosting_regressor
+        ridge
+        lasso
+        elastic_net
+        svr
+        knn_regressor
+        decision_tree_regressor
+        adaboost_regressor
+        extra_trees_regressor
+        sgd_regressor
+        random_forest_regressor_w_uncertainty
+        gradient_boosting_regressor_w_uncertainty
+        decision_tree_regressor_w_uncertainty
+        adaboost_regressor_w_uncertainty
+        extra_trees_regressor_w_uncertainty
     
     Args:
         train_input_filename: Training CSV with SMILES and labels
@@ -133,6 +169,42 @@ def train_ml_models_cross_validation(
     Train multiple models using cross-validation. Creates train/val splits, trains one model per fold, stores all for ensemble use.
     
     CV strategies: 'kfold', 'stratified', 'montecarlo', 'scaffold' (needs scaffold_column), 'cluster' (needs cluster_column), 'leavepout' (needs p)
+
+    All available model_algorithm options:
+
+        random_forest_classifier
+        gradient_boosting_classifier
+        logistic_regression
+        svc
+        knn_classifier
+        decision_tree_classifier
+        adaboost_classifier
+        extra_trees_classifier
+        naive_bayes
+        lda_classifier
+        sgd_classifier
+        random_forest_classifier_w_uncertainty
+        gradient_boosting_classifier_w_uncertainty
+        logistic_regression_w_uncertainty
+        decision_tree_classifier_w_uncertainty
+        adaboost_classifier_w_uncertainty
+        extra_trees_classifier_w_uncertainty
+        random_forest_regressor
+        gradient_boosting_regressor
+        ridge
+        lasso
+        elastic_net
+        svr
+        knn_regressor
+        decision_tree_regressor
+        adaboost_regressor
+        extra_trees_regressor
+        sgd_regressor
+        random_forest_regressor_w_uncertainty
+        gradient_boosting_regressor_w_uncertainty
+        decision_tree_regressor_w_uncertainty
+        adaboost_regressor_w_uncertainty
+        extra_trees_regressor_w_uncertainty
     
     Args:
         input_filename: Training CSV with SMILES and labels
