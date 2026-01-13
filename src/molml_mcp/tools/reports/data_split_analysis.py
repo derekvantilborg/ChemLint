@@ -1818,7 +1818,7 @@ def _analyze_functional_group_distribution(
 # AGGREGATOR FUNCTION
 # ============================================================================
 
-def _analyze_split_quality(
+def analyze_split_quality(
     train_path: str,
     test_path: str,
     val_path: Optional[str],

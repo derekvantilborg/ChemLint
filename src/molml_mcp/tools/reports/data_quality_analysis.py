@@ -13,7 +13,7 @@ This module leverages existing tools in the codebase:
 - calculate_simple_descriptors() for descriptor calculation
 - detect_outliers_iqr() for outlier detection
 - get_dataset_summary() for column statistics
-- generate_scaffold_report() for scaffold diversity
+- scaffold_analysis() for scaffold diversity
 """
 
 import numpy as np
@@ -32,7 +32,7 @@ from molml_mcp.tools.featurization.simple_descriptors import calculate_simple_de
 from molml_mcp.tools.core.filtering import filter_by_pains, filter_by_lipinski_ro5, filter_by_veber_rules, filter_by_qed
 from molml_mcp.tools.cleaning.deduplication import find_duplicates_dataset
 from molml_mcp.tools.core.outliers import detect_outliers_iqr
-from molml_mcp.tools.reports.scaffold_analysis import generate_scaffold_report
+from molml_mcp.tools.reports.scaffold_analysis import scaffold_analysis
 from molml_mcp.constants import COMMON_SOLVENTS, COMMON_SALT_SMILES
 
 
@@ -1386,7 +1386,7 @@ def _perform_quality_report_calculations(
         
         # 12. Scaffold diversity (existing tool)
         scaffold_temp_name = f"{output_name}_scaffold_temp"
-        scaffold_result = generate_scaffold_report(
+        scaffold_result = scaffold_analysis(
             dataset_filename=input_filename,
             project_manifest_path=project_manifest_path,
             smiles_column=smiles_col,
@@ -1396,8 +1396,9 @@ def _perform_quality_report_calculations(
             activity_type=activity_type if has_activity else None,
             explanation="Temporary scaffold analysis for quality report"
         )
-        temp_files.append(scaffold_result.get('report_json', ''))
-        temp_files.append(scaffold_result.get('report_txt', ''))
+        temp_files.append(scaffold_result.get('report_json_filename', ''))
+        temp_files.append(scaffold_result.get('report_text_filename', ''))
+        temp_files.append(scaffold_result.get('dataset_with_scaffolds_filename', ''))
         
         # Extract key scaffold metrics
         scaffold_metrics = {

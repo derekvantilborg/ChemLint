@@ -12,7 +12,7 @@ from molml_mcp.tools.reports.scaffold_analysis import (
     _calculate_shannon_entropy,
     _calculate_scaffold_similarity,
     _perform_enrichment_analysis,
-    generate_scaffold_report
+    scaffold_analysis
 )
 from molml_mcp.infrastructure.resources import _store_resource, _load_resource
 
@@ -139,11 +139,11 @@ def test_dataset(session_workdir):
 
 
 @pytest.mark.slow
-def test_generate_scaffold_report_basic(test_dataset):
+def test_scaffold_analysis_basic(test_dataset):
     """Test basic scaffold report generation and output structure."""
     filename, manifest_path = test_dataset
     
-    result = generate_scaffold_report(
+    result = scaffold_analysis(
         dataset_filename=filename,
         project_manifest_path=manifest_path,
         smiles_column='smiles',
@@ -171,12 +171,12 @@ def test_generate_scaffold_report_basic(test_dataset):
 
 
 @pytest.mark.slow
-def test_generate_scaffold_report_with_activity(test_dataset):
+def test_scaffold_analysis_with_activity(test_dataset):
     """Test scaffold report with both classification and regression activity."""
     filename, manifest_path = test_dataset
     
     # Test with classification
-    result_class = generate_scaffold_report(
+    result_class = scaffold_analysis(
         dataset_filename=filename, project_manifest_path=manifest_path,
         smiles_column='smiles', output_filename='test_report_class',
         activity_column='class', activity_type='classification',
@@ -189,7 +189,7 @@ def test_generate_scaffold_report_with_activity(test_dataset):
     assert 'privileged_scaffolds' in json_report['activity_enrichment']
     
     # Test with regression
-    result_reg = generate_scaffold_report(
+    result_reg = scaffold_analysis(
         dataset_filename=filename, project_manifest_path=manifest_path,
         smiles_column='smiles', output_filename='test_report_reg',
         activity_column='exp_mean [nM]', activity_type='regression',
@@ -202,12 +202,12 @@ def test_generate_scaffold_report_with_activity(test_dataset):
 
 
 @pytest.mark.slow
-def test_generate_scaffold_report_scaffold_types(test_dataset):
+def test_scaffold_analysis_scaffold_types(test_dataset):
     """Test report generation with different scaffold types."""
     filename, manifest_path = test_dataset
     
     for scaffold_type in ['bemis_murcko', 'generic', 'cyclic_skeleton']:
-        result = generate_scaffold_report(
+        result = scaffold_analysis(
             dataset_filename=filename, project_manifest_path=manifest_path,
             smiles_column='smiles', output_filename=f'test_report_{scaffold_type}',
             scaffold_type=scaffold_type, explanation=f'Test {scaffold_type}'
@@ -217,11 +217,11 @@ def test_generate_scaffold_report_scaffold_types(test_dataset):
 
 
 @pytest.mark.slow
-def test_generate_scaffold_report_outputs_and_structure(test_dataset):
+def test_scaffold_analysis_outputs_and_structure(test_dataset):
     """Test report outputs (dataset, JSON structure, diversity metrics)."""
     filename, manifest_path = test_dataset
     
-    result = generate_scaffold_report(
+    result = scaffold_analysis(
         dataset_filename=filename, project_manifest_path=manifest_path,
         smiles_column='smiles', output_filename='test_report_structure',
         outlier_threshold=0.3, top_n=5, explanation='Test outputs'
@@ -250,13 +250,13 @@ def test_generate_scaffold_report_outputs_and_structure(test_dataset):
         assert all(k in outlier for k in ['scaffold', 'count', 'avg_similarity'])
 
 
-def test_generate_scaffold_report_error_handling(test_dataset):
+def test_scaffold_analysis_error_handling(test_dataset):
     """Test error handling for invalid inputs."""
     filename, manifest_path = test_dataset
     
     # Missing SMILES column
     with pytest.raises(ValueError, match="SMILES column.*not found"):
-        generate_scaffold_report(
+        scaffold_analysis(
             dataset_filename=filename, project_manifest_path=manifest_path,
             smiles_column='nonexistent', output_filename='test_error',
             explanation='Test error'
@@ -264,7 +264,7 @@ def test_generate_scaffold_report_error_handling(test_dataset):
     
     # Missing activity column
     with pytest.raises(ValueError, match="Activity column.*not found"):
-        generate_scaffold_report(
+        scaffold_analysis(
             dataset_filename=filename, project_manifest_path=manifest_path,
             smiles_column='smiles', output_filename='test_error',
             activity_column='nonexistent', activity_type='classification',
@@ -273,7 +273,7 @@ def test_generate_scaffold_report_error_handling(test_dataset):
     
     # Activity column without type
     with pytest.raises(ValueError, match="activity_type must be specified"):
-        generate_scaffold_report(
+        scaffold_analysis(
             dataset_filename=filename, project_manifest_path=manifest_path,
             smiles_column='smiles', output_filename='test_error',
             activity_column='class', explanation='Test error'
@@ -281,7 +281,7 @@ def test_generate_scaffold_report_error_handling(test_dataset):
     
     # Invalid activity type
     with pytest.raises(ValueError, match="activity_type must be"):
-        generate_scaffold_report(
+        scaffold_analysis(
             dataset_filename=filename, project_manifest_path=manifest_path,
             smiles_column='smiles', output_filename='test_error',
             activity_column='class', activity_type='invalid',
