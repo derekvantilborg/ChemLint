@@ -729,6 +729,76 @@ def transform_column(
     }
 
 
+def scramble_column(
+    input_filename: str,
+    column_name: str,
+    project_manifest_path: str,
+    output_filename: str,
+    explanation: str = 'Scrambled column for permutation testing',
+    random_seed: Optional[int] = None
+) -> dict:
+    """
+    Randomly shuffle values in a column (e.g., for y-scrambling in permutation tests).
+    
+    This is commonly used in machine learning to establish a baseline by randomizing
+    the target variable while keeping the features intact. If the model performs
+    significantly better on real data than scrambled data, it validates the model.
+
+    Parameters
+    ----------
+    input_filename : str
+        Input dataset filename
+    column_name : str
+        Name of the column to scramble
+    project_manifest_path : str
+        Path to manifest.json
+    output_filename : str
+        Output dataset name (no extension)
+    explanation : str
+        Brief description
+    random_seed : int, optional
+        Random seed for reproducibility. If None, results will vary each time.
+
+    Returns
+    -------
+    dict
+        Contains output_filename, n_rows, columns, scrambled_column, random_seed, preview
+    """
+    import pandas as pd
+    import numpy as np
+    
+    df = _load_resource(project_manifest_path, input_filename)
+    
+    # Validate column exists
+    if column_name not in df.columns:
+        raise ValueError(
+            f"Column '{column_name}' not found in dataset. "
+            f"Available columns: {list(df.columns)}"
+        )
+    
+    # Create copy to avoid modifying original
+    df = df.copy()
+    
+    # Set random seed if provided
+    if random_seed is not None:
+        np.random.seed(random_seed)
+    
+    # Scramble the column by shuffling its values
+    df[column_name] = np.random.permutation(df[column_name].values)
+    
+    # Store as new resource for full traceability
+    output_id = _store_resource(df, project_manifest_path, output_filename, explanation, 'csv')
+    
+    return {
+        "output_filename": output_id,
+        "n_rows": len(df),
+        "columns": list(df.columns),
+        "scrambled_column": column_name,
+        "random_seed": random_seed,
+        "preview": df.head(5).to_dict(orient="records"),
+    }
+
+
 def combine_datasets_vertical(
     input_filenames: list[str],
     project_manifest_path: str,
@@ -1201,6 +1271,7 @@ def get_all_dataset_tools():
         drop_columns,
         keep_columns,
         transform_column,
+        scramble_column,
         combine_datasets_vertical,
         combine_datasets_horizontal,
         merge_datasets_on_smiles,
