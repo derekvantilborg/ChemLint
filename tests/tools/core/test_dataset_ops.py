@@ -659,6 +659,106 @@ def test_transform_column(session_workdir, request):
     assert np.allclose(df_result2["pKi"].values, expected_pKi, rtol=1e-9)
 
 
+def test_scramble_column(session_workdir, request):
+    """Test scrambling a column for permutation testing."""
+    from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
+    from molml_mcp.tools.core.dataset_ops import scramble_column
+    import numpy as np
+    
+    # Create test-specific subdirectory
+    test_dir = session_workdir / request.node.name
+    test_dir.mkdir(exist_ok=True)
+    create_project_manifest(str(test_dir), "test")
+    
+    manifest_path = str(test_dir / "test_manifest.json")
+    
+    # Test 1: Scramble column with fixed seed for reproducibility
+    df1 = pd.DataFrame({
+        "smiles": ["CCO", "CCC", "CCCO", "CCCC", "CCCCO"],
+        "activity": [1, 2, 3, 4, 5]
+    })
+    filename1 = _store_resource(df1, manifest_path, "test_data_scramble", "Test", "csv")
+    
+    result1 = scramble_column(
+        input_filename=filename1,
+        column_name="activity",
+        project_manifest_path=manifest_path,
+        output_filename="scrambled_data",
+        explanation="Scrambled activity for permutation test",
+        random_seed=42
+    )
+    
+    assert "output_filename" in result1
+    assert result1["output_filename"] != filename1  # Should create new file
+    assert "n_rows" in result1
+    assert result1["n_rows"] == 5
+    assert "scrambled_column" in result1
+    assert result1["scrambled_column"] == "activity"
+    assert "random_seed" in result1
+    assert result1["random_seed"] == 42
+    assert "columns" in result1
+    assert set(result1["columns"]) == {"smiles", "activity"}
+    assert "preview" in result1
+    
+    df_result1 = _load_resource(manifest_path, result1["output_filename"])
+    
+    # Verify that smiles column is unchanged
+    assert list(df_result1["smiles"]) == list(df1["smiles"])
+    
+    # Verify that activity values are different order but same set
+    assert set(df_result1["activity"]) == set(df1["activity"])
+    assert list(df_result1["activity"]) != list(df1["activity"])  # Should be shuffled
+    
+    # Test 2: Same seed should give same result
+    result2 = scramble_column(
+        input_filename=filename1,
+        column_name="activity",
+        project_manifest_path=manifest_path,
+        output_filename="scrambled_data2",
+        explanation="Scrambled activity with same seed",
+        random_seed=42
+    )
+    
+    df_result2 = _load_resource(manifest_path, result2["output_filename"])
+    assert list(df_result2["activity"]) == list(df_result1["activity"])
+    
+    # Test 3: Different seed should give different result
+    result3 = scramble_column(
+        input_filename=filename1,
+        column_name="activity",
+        project_manifest_path=manifest_path,
+        output_filename="scrambled_data3",
+        explanation="Scrambled activity with different seed",
+        random_seed=123
+    )
+    
+    df_result3 = _load_resource(manifest_path, result3["output_filename"])
+    assert list(df_result3["activity"]) != list(df_result1["activity"])
+    
+    # Test 4: Error handling - invalid column name
+    with pytest.raises(ValueError, match="Column 'nonexistent' not found"):
+        scramble_column(
+            input_filename=filename1,
+            column_name="nonexistent",
+            project_manifest_path=manifest_path,
+            output_filename="should_fail",
+            explanation="Should fail"
+        )
+    
+    # Test 5: Scramble without seed (should work but not reproducible)
+    result5 = scramble_column(
+        input_filename=filename1,
+        column_name="activity",
+        project_manifest_path=manifest_path,
+        output_filename="scrambled_no_seed",
+        explanation="Scrambled without seed"
+    )
+    
+    assert result5["random_seed"] is None
+    df_result5 = _load_resource(manifest_path, result5["output_filename"])
+    assert set(df_result5["activity"]) == set(df1["activity"])
+
+
 def test_combine_datasets_vertical(session_workdir, request):
     """Test combining datasets vertically."""
     from molml_mcp.infrastructure.resources import _store_resource, _load_resource, create_project_manifest
