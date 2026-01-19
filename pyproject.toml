@@ -21,6 +21,8 @@ dependencies = [
     "plotnine>=0.15.2",
     "statsmodels>=0.14.0",
     "pytest>=9.0.2",
+    "plotly>=6.5.2",
+    "dash>=3.3.0",
 ]
 
 [tool.setuptools]

@@ -36,6 +36,12 @@ from molml_mcp.tools.core.statistics import (
 from molml_mcp.tools.core.outliers import (
     get_all_outlier_detection_tools,
 )
+from molml_mcp.tools.core.mol_scatter_plot import (
+    add_molecular_scatter_plot,
+    remove_plot,
+    list_active_plots,
+    create_molecular_scatter_plot,  # Deprecated but kept for compatibility
+)
 
 __all__ = [
     'import_csv_from_path',
@@ -64,4 +70,8 @@ __all__ = [
     'reduce_dimensions_tsne',
     'get_all_statistical_test_tools',
     'get_all_outlier_detection_tools',
+    'add_molecular_scatter_plot',
+    'remove_plot',
+    'list_active_plots',
+    'create_molecular_scatter_plot',
 ]

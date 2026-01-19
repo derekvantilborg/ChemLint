@@ -40,18 +40,99 @@
 
 ## 🚀 Quick Start
 
+### Prerequisites
+
+- **Python 3.13+** (included with uv)
+- **uv** - Fast Python package installer ([install instructions](https://docs.astral.sh/uv/))
+  ```bash
+  # macOS/Linux
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  
+  # Or with pip
+  pip install uv
+  ```
+- **Cairo** (optional) - Only needed for plotting features
+  ```bash
+  # macOS
+  brew install cairo
+  
+  # Linux
+  sudo apt-get install libcairo2-dev  # Ubuntu/Debian
+  sudo yum install cairo-devel        # RHEL/CentOS
+  ```
+
 ### Installation
+
+**Option 1: Automated Installation (Recommended)**
+
+Simply run the installer script - it will handle everything:
 
 ```bash
 # Clone repository
 git clone https://github.com/derekvantilborg/molml_mcp.git
 cd molml_mcp
 
-# Install with uv (recommended)
-uv mcp install src/molml_mcp/server.py
+# Run installer
+./install.sh
+```
 
-# Or deploy directly (updates MCP client config)
-./deploy_mcp_server.sh
+The installer will:
+- ✅ Detect and verify uv installation
+- ✅ Install Python dependencies
+- ✅ Run server tests
+- ✅ Detect Cairo (optional, for plotting - will warn if missing)
+- ✅ Configure Claude Desktop automatically
+- ✅ Provide clear next steps
+
+**After installation, restart Claude Desktop:**
+```bash
+# macOS
+pkill -x Claude && sleep 1 && open -a Claude
+
+# Linux/Windows
+# Restart Claude Desktop from your applications menu
+```
+
+**Option 2: Manual Configuration**
+
+If you prefer manual setup or use a different MCP client:
+
+```bash
+# 1. Clone and install dependencies
+git clone https://github.com/derekvantilborg/molml_mcp.git
+cd molml_mcp
+uv sync
+
+# 2. Run tests to verify installation
+uv run pytest -m server -q
+
+# 3. Configure your MCP client
+./mcp_client_configs/configure_claude.sh $(which uv) $(pwd) [cairo_path]
+```
+
+**Option 3: Other MCP Clients**
+
+For clients other than Claude Desktop, add this to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "molml-mcp": {
+      "command": "/path/to/uv",
+      "args": [
+        "run",
+        "--with",
+        "mcp[cli]",
+        "--directory",
+        "/path/to/molml_mcp",
+        "mcp",
+        "run",
+        "./src/molml_mcp/server.py"
+      ],
+      "enabled": true
+    }
+  }
+}
 ```
 
 ### Usage with MCP Clients

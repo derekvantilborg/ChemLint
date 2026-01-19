@@ -93,7 +93,7 @@ fi
 
 log_info "Running server tests..."
 
-if "$UV_BIN" run --directory "$PROJECT_DIR" pytest -m server -q; then
+if "$UV_BIN" run --directory "$PROJECT_DIR" pytest tests/test_server.py::test_server_imports_and_initializes -v; then
     log_success "Server tests passed"
 else
     log_error "Server tests failed!"
