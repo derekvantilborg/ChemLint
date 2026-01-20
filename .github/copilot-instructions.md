@@ -1,15 +1,24 @@
 # MolML MCP Server - AI Coding Agent Instructions
 
 ## Project Overview
-This is an **MCP (Model Context Protocol) server** that enables LLMs to perform molecular machine learning tasks. Built with FastMCP, it exposes tools for molecular structure manipulation, dataset operations, and ML workflows.
+This is an **MCP (Model Context Protocol) server** that enables LLMs to perform molecular machine learning tasks. Built with FastMCP, it exposes 150+ tools for molecular structure manipulation, dataset operations, and ML workflows.
 
 ## Architecture
 
 ### Core Components
 - **`server.py`**: FastMCP server registration point - tools added via `mcp.add_tool()`
-- **`tools/`**: Domain-organized tool modules (cleaning, core_mol, ml, protein)
-- **`resources/`**: Persistent resource management with unique ID system
-- **`config.py`**: Currently empty - configuration through environment variables
+- **`tools/`**: 150+ domain-organized tool modules organized in subdirectories:
+  - `cleaning/`: SMILES standardization, deduplication
+  - `core/`: Dataset operations, statistics, filtering, outliers, dimensionality reduction
+  - `core_mol/`: Scaffolds, similarity, complexity, activity cliffs, data splitting
+  - `featurization/`: Descriptors (simple, complex), SMILES encoding
+  - `ml/`: Training, evaluation, cross-validation, hyperparameter tuning
+  - `plotting/`: Interactive visualizations with Dash
+  - `reports/`: Quality reports, scaffold analysis, split quality
+  - `clustering/`: DBSCAN, hierarchical, k-means, Butina
+- **`infrastructure/`**: Resource management and type registry
+  - `resources.py`: Manifest-based resource tracking
+  - `supported_resource_types.py`: Handlers for CSV, models, JSON, PNG
 
 ### Resource Management System
 The project uses a **manifest-based resource tracking system** for stateful operations:
@@ -85,15 +94,10 @@ The project uses a **manifest-based resource tracking system** for stateful oper
   ```
 
 ### Tool Organization
-Tools follow a **domain-based namespace pattern**:
-- `tools/cleaning/`: Cleaning operations (SMILES cleaning, label processing, deduplication)
-  - `mol_cleaning.py`: SMILES standardization, validation, salt/solvent removal
-  - `label_cleaning.py`: Label conversion (continuous to binary)
-  - `deduplication.py`: Entry deduplication (planned)
-- `tools/core_mol/`: Molecular operations (descriptors, scaffolds, visualization, data splitting)
-- `tools/ml/`: Machine learning (training, evaluation)
-- `tools/protein/`: Protein-related operations
-- Individual tools registered in `server.py` and exported through `tools/__init__.py`
+Tools follow a **domain-based namespace pattern** with `get_all_*_tools()` functions for batch registration:
+- Each tool subdirectory exports a `get_all_*_tools()` function
+- Tools are registered in `server.py` using loops: `for tool_func in get_all_*_tools(): mcp.add_tool(tool_func)`
+- Some critical tools are registered individually for clarity
 
 ## Key Patterns
 
@@ -116,27 +120,19 @@ return {
 }
 ```
 
-### 3. Inplace Operations
-Many dataset tools support `inplace: bool = False`:
-- `inplace=False`: Creates new resource, returns new `output_filename`
-- `inplace=True`: Modifies existing resource, returns same `output_filename`
+### 3. Immutable Operations for Traceability
+All dataset mutations create **new resources** rather than modifying existing ones:
+- Every operation creates a new file with a unique ID
+- Original data is never modified, ensuring full traceability
+- The manifest tracks the complete lineage of transformations
+- This enables reproduction of the entire workflow and rollback to any state
 
 ## Development Workflow
 
-### Deployment
-Use `deploy_mcp_server.sh` to install/update the server in Claude Desktop:
-```bash
-./deploy_mcp_server.sh
-```
-This script:
-1. Runs `uv mcp install src/molml_mcp/server.py`
-2. Updates Claude Desktop config JSON with jq
-3. Restarts Claude Desktop
-
 ### Adding New Tools
 1. Create function in appropriate `tools/` subdirectory
-2. Export from `tools/__init__.py`
-3. Register in `server.py` with `mcp.add_tool()`
+2. Export from subdirectory's `__init__.py` via `get_all_*_tools()` function
+3. Ensure tool is registered in `server.py` (either individually or via the get_all loop)
 4. Follow manifest-based pattern if stateful (input_filename → output_filename)
 
 ### Adding New Resource Types
@@ -154,11 +150,6 @@ TYPE_REGISTRY["newtype"] = {
 - **RDKit**: Molecular structure manipulation (SMILES, molecule objects)
 - **pandas**: Dataset operations
 - **scikit-learn**: ML models
+- **Dash + Plotly**: Interactive visualizations
 - **joblib**: Model serialization
 - Python 3.13+ required
-
-## Important Notes
-- Test data available in `tests/data/canonicalization.csv` (includes NaN handling examples)
-- Many tool files are empty placeholders for future implementation
-- No formal test suite yet - manual testing workflow
-- Environment variable `MOLML_MCP_DATA_DIR` overrides default data directory
