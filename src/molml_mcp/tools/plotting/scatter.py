@@ -21,50 +21,26 @@ def add_molecular_scatter_plot(
     size_column: str = None,
     show_structures_on_hover: bool = True
 ) -> dict:
-    """
-    Add an interactive scatter plot to the persistent visualization dashboard.
+    """Add interactive scatter plot with optional molecular structure tooltips.
     
-    Creates a new tab in the Dash visualization server. If the server isn't running,
-    it will be started automatically. Multiple plots can coexist as tabs.
+    Creates new dashboard tab. Starts server automatically if needed. Hover over points to see molecular structures (if enabled).
     
     Parameters
     ----------
-    input_filename : str
-        Input dataset filename
-    x_column : str
-        Column name for x-axis
-    y_column : str
-        Column name for y-axis
-    project_manifest_path : str
-        Path to manifest.json
-    plot_name : str
-        Unique name for this plot (used as tab label and identifier)
-    explanation : str
-        Brief description of the plot
-    smiles_column : str, default='smiles'
-        Column containing SMILES strings
-    color_column : str, optional
-        Column to use for point colors
-    size_column : str, optional
-        Column to use for point sizes
-    show_structures_on_hover : bool, default=True
-        If True, show molecular structures on hover
+    input_filename : str - Dataset filename
+    x_column : str - Column for x-axis
+    y_column : str - Column for y-axis
+    project_manifest_path : str - Path to manifest.json
+    plot_name : str - Unique tab label
+    explanation : str - Brief description
+    smiles_column : str, default='smiles' - SMILES column
+    color_column : str, optional - Column for point colors
+    size_column : str, optional - Column for point sizes
+    show_structures_on_hover : bool, default=True - Show structures on hover
     
-    Returns
-    -------
-    dict
-        Contains plot_name, url, n_molecules, x_column, y_column, active_plots
+    Returns: dict with plot_name, plot_id, url, n_molecules, x_column, y_column, show_structures, active_plots, message
     
-    Examples
-    --------
-    >>> add_molecular_scatter_plot(
-    ...     input_filename="dataset_A1B2C3D4.csv",
-    ...     x_column="MW",
-    ...     y_column="LogP",
-    ...     project_manifest_path="/path/to/manifest.json",
-    ...     plot_name="MW vs LogP",
-    ...     explanation="Molecular weight vs lipophilicity"
-    ... )
+    Example: add_molecular_scatter_plot("data_ABC123.csv", "MW", "LogP", "/path/manifest.json", "MW vs LogP", "Lipophilicity analysis")
     """
     global _active_plots, _PORT
     

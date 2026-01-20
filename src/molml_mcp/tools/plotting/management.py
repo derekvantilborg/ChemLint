@@ -8,22 +8,15 @@ from molml_mcp.tools.plotting.utils import (
 
 
 def remove_plot(plot_name: str) -> dict:
-    """
-    Remove a plot from the visualization dashboard.
+    """Remove plot from dashboard by name.
     
     Parameters
     ----------
-    plot_name : str
-        Name of the plot to remove (case-insensitive)
+    plot_name : str - Plot name (case-insensitive, must match existing)
     
-    Returns
-    -------
-    dict
-        Contains removed plot name, remaining plots, and url
+    Returns: dict with removed_plot, remaining_plots (list), n_remaining, url, message
     
-    Examples
-    --------
-    >>> remove_plot("MW vs LogP")
+    Example: remove_plot("MW vs LogP")
     """
     global _active_plots, _PORT
     
@@ -54,17 +47,11 @@ def remove_plot(plot_name: str) -> dict:
 
 
 def list_active_plots() -> dict:
-    """
-    List all active plots in the visualization dashboard.
+    """List all active plots in dashboard.
     
-    Returns
-    -------
-    dict
-        Contains plot details, url, and count
+    Returns: dict with plots (list of {name, plot_id, type, explanation}), n_plots, url, message
     
-    Examples
-    --------
-    >>> list_active_plots()
+    Example: list_active_plots()
     """
     global _active_plots, _PORT
     

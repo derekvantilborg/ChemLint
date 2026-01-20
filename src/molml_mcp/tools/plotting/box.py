@@ -21,60 +21,25 @@ def add_box_plot(
     show_points: bool = False,
     notched: bool = False
 ) -> dict:
-    """
-    Add an interactive box plot to the persistent visualization dashboard.
+    """Add box-and-whisker plot with optional grouping and data points.
     
-    Creates a new tab in the Dash visualization server showing box-and-whisker plot(s).
-    Supports grouping to show multiple box plots side by side.
+    Creates new dashboard tab showing distribution quartiles. Supports side-by-side grouped plots. Starts server automatically if needed.
     
     Parameters
     ----------
-    input_filename : str
-        Input dataset filename
-    column : str
-        Column name containing values to plot
-    project_manifest_path : str
-        Path to manifest.json
-    plot_name : str
-        Unique name for this plot (used as tab label and identifier)
-    explanation : str
-        Brief description of the plot
-    group_column : str, optional
-        Column name for grouping. If provided, creates separate box plots for each group
-    color : str, default="#577788"
-        Color for box plots (hex color)
-    show_points : bool, default=False
-        If True, show individual data points overlaid on boxes
-    notched : bool, default=False
-        If True, show notched boxes (indicates confidence interval around median)
+    input_filename : str - Dataset filename
+    column : str - Column with values to plot
+    project_manifest_path : str - Path to manifest.json
+    plot_name : str - Unique tab label
+    explanation : str - Brief description
+    group_column : str, optional - Column for grouping (creates multiple boxes)
+    color : str, default='#577788' - Hex color
+    show_points : bool, default=False - Overlay individual points
+    notched : bool, default=False - Show CI around median
     
-    Returns
-    -------
-    dict
-        Contains plot_name, url, n_values, statistics, active_plots
+    Returns: dict with plot_name, plot_id, url, n_values, statistics (mean/median/q1/q3/min/max/iqr), active_plots, message
     
-    Examples
-    --------
-    Single box plot:
-    
-    >>> add_box_plot(
-    ...     input_filename="dataset_A1B2C3D4.csv",
-    ...     column="MW",
-    ...     project_manifest_path="/path/to/manifest.json",
-    ...     plot_name="Molecular Weight Distribution",
-    ...     explanation="Box plot of molecular weights"
-    ... )
-    
-    Grouped box plot:
-    
-    >>> add_box_plot(
-    ...     input_filename="dataset_A1B2C3D4.csv",
-    ...     column="Activity",
-    ...     group_column="Cluster",
-    ...     project_manifest_path="/path/to/manifest.json",
-    ...     plot_name="Activity by Cluster",
-    ...     explanation="Box plot of activity values grouped by cluster"
-    ... )
+    Example: add_box_plot("data_ABC123.csv", "Activity", "/path/manifest.json", "Activity Distribution", "pIC50 boxplot", group_column="Cluster")
     """
     global _active_plots, _PORT
     

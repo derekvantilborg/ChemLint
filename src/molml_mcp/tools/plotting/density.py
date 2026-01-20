@@ -25,51 +25,27 @@ def add_density_plot(
     show_mean_line: bool = True,
     show_median_line: bool = False
 ) -> dict:
-    """
-    Add an interactive density plot (KDE) to the persistent visualization dashboard.
+    """Add kernel density estimation (KDE) plot with optional rug, mean/median lines.
     
-    Creates a new tab in the Dash visualization server showing a kernel density estimate.
-    If the server isn't running, it will be started automatically.
+    Creates new dashboard tab showing smooth density curve. Starts server automatically if needed. Requires ≥2 data points.
     
     Parameters
     ----------
-    input_filename : str
-        Input dataset filename
-    column : str
-        Column name to plot as density
-    project_manifest_path : str
-        Path to manifest.json
-    plot_name : str
-        Unique name for this plot (used as tab label and identifier)
-    explanation : str
-        Brief description of the plot
-    bandwidth : str, default='scott'
-        Method to determine bandwidth: 'scott', 'silverman', or a numeric value
-    fill : bool, default=True
-        If True, fill the area under the density curve
-    color : str, default="#577788"
-        Color for density curve (hex color)
-    show_rug : bool, default=True
-        If True, show rug plot (individual data points) at bottom
-    show_mean_line : bool, default=True
-        If True, show a vertical line at the mean
-    show_median_line : bool, default=False
-        If True, show a vertical line at the median
+    input_filename : str - Dataset filename
+    column : str - Column to plot
+    project_manifest_path : str - Path to manifest.json
+    plot_name : str - Unique tab label
+    explanation : str - Brief description
+    bandwidth : str, default='scott' - Bandwidth method: 'scott', 'silverman', or numeric
+    fill : bool, default=True - Fill under curve
+    color : str, default='#577788' - Hex color
+    show_rug : bool, default=True - Show data points at bottom
+    show_mean_line : bool, default=True - Show mean line
+    show_median_line : bool, default=False - Show median line
     
-    Returns
-    -------
-    dict
-        Contains plot_name, url, n_values, statistics, active_plots
+    Returns: dict with plot_name, plot_id, url, n_values, statistics (mean/median/std/min/max), active_plots, message
     
-    Examples
-    --------
-    >>> add_density_plot(
-    ...     input_filename="dataset_A1B2C3D4.csv",
-    ...     column="MW",
-    ...     project_manifest_path="/path/to/manifest.json",
-    ...     plot_name="Molecular Weight Density",
-    ...     explanation="Density distribution of molecular weights"
-    ... )
+    Example: add_density_plot("data_ABC123.csv", "LogP", "/path/manifest.json", "LogP Density", "Lipophilicity distribution")
     """
     global _active_plots, _PORT
     

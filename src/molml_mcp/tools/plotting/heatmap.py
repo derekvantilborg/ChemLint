@@ -20,32 +20,22 @@ def add_correlation_heatmap(
     explanation: str,
     method: str = "pearson"
 ) -> dict:
-    """
-    Add correlation heatmap to visualization dashboard.
+    """Add correlation matrix heatmap (Pearson or Spearman).
+    
+    Creates new dashboard tab showing pairwise correlations. Values range -1 to 1. Requires ≥2 numeric columns. Starts server automatically if needed.
     
     Parameters
     ----------
-    input_filename : str
-        Dataset filename
-    project_manifest_path : str
-        Path to manifest.json
-    columns : list[str]
-        Columns to include in correlation matrix
-    plot_name : str
-        Name for the plot tab
-    explanation : str
-        Brief description
-    method : str, default="pearson"
-        Correlation method: "pearson" or "spearman"
+    input_filename : str - Dataset filename
+    project_manifest_path : str - Path to manifest.json
+    columns : list[str] - Columns to correlate (must be numeric)
+    plot_name : str - Unique tab label
+    explanation : str - Brief description
+    method : str, default='pearson' - Correlation method: 'pearson' or 'spearman'
     
-    Returns
-    -------
-    dict
-        Contains plot_name, plot_id, n_variables, url, message
+    Returns: dict with plot_name, plot_id, n_variables, method, url, message
     
-    Examples
-    --------
-    >>> add_correlation_heatmap("data.csv", path, ["MW", "LogP", "TPSA"], "correlations", "Property correlations")
+    Example: add_correlation_heatmap("data_ABC123.csv", "/path/manifest.json", ["MW", "LogP", "TPSA"], "Property Correlations", "Descriptor analysis")
     """
     if method not in ["pearson", "spearman"]:
         raise ValueError(f"Invalid method '{method}'. Must be 'pearson' or 'spearman'")
@@ -129,36 +119,24 @@ def add_grouped_heatmap(
     explanation: str,
     aggregation: str = "mean"
 ) -> dict:
-    """
-    Add grouped heatmap with categorical row/column groupings.
+    """Add pivot table heatmap with categorical grouping and aggregation.
+    
+    Creates new dashboard tab showing aggregated values in 2D grid. Useful for category-based analysis. Starts server automatically if needed.
     
     Parameters
     ----------
-    input_filename : str
-        Dataset filename
-    project_manifest_path : str
-        Path to manifest.json
-    row_column : str
-        Column for heatmap rows (categorical)
-    col_column : str
-        Column for heatmap columns (categorical)
-    value_column : str
-        Column with values to aggregate (numeric)
-    plot_name : str
-        Name for the plot tab
-    explanation : str
-        Brief description
-    aggregation : str, default="mean"
-        Aggregation method: "mean", "median", "count", "std", "min", "max", "sum"
+    input_filename : str - Dataset filename
+    project_manifest_path : str - Path to manifest.json
+    row_column : str - Column for rows (categorical)
+    col_column : str - Column for columns (categorical)
+    value_column : str - Column to aggregate (numeric)
+    plot_name : str - Unique tab label
+    explanation : str - Brief description
+    aggregation : str, default='mean' - Aggregation: 'mean', 'median', 'count', 'std', 'min', 'max', 'sum'
     
-    Returns
-    -------
-    dict
-        Contains plot_name, plot_id, n_rows, n_cols, url, message
+    Returns: dict with plot_name, plot_id, n_rows, n_cols, aggregation, url, message
     
-    Examples
-    --------
-    >>> add_grouped_heatmap("data.csv", path, "scaffold", "cluster", "pKi", "activity_map", "Activity by scaffold", "mean")
+    Example: add_grouped_heatmap("data_ABC123.csv", "/path/manifest.json", "scaffold", "cluster", "pIC50", "Activity Map", "Scaffold-cluster analysis", "mean")
     """
     valid_agg = ["mean", "median", "count", "std", "min", "max", "sum"]
     if aggregation not in valid_agg:

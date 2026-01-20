@@ -21,47 +21,25 @@ def add_histogram(
     show_mean_line: bool = True,
     show_median_line: bool = False
 ) -> dict:
-    """
-    Add an interactive histogram to the persistent visualization dashboard.
+    """Add histogram distribution plot with optional mean/median lines.
     
-    Creates a new tab in the Dash visualization server. If the server isn't running,
-    it will be started automatically. Multiple plots can coexist as tabs.
+    Creates new dashboard tab showing value distribution. Starts server automatically if needed.
     
     Parameters
     ----------
-    input_filename : str
-        Input dataset filename
-    column : str
-        Column name to plot as histogram
-    project_manifest_path : str
-        Path to manifest.json
-    plot_name : str
-        Unique name for this plot (used as tab label and identifier)
-    explanation : str
-        Brief description of the plot
-    bins : int, default=30
-        Number of histogram bins
-    color : str, default="#577788"
-        Color for histogram bars (hex color)
-    show_mean_line : bool, default=True
-        If True, show a vertical line at the mean
-    show_median_line : bool, default=False
-        If True, show a vertical line at the median
+    input_filename : str - Dataset filename
+    column : str - Column to plot
+    project_manifest_path : str - Path to manifest.json
+    plot_name : str - Unique tab label
+    explanation : str - Brief description
+    bins : int, default=30 - Number of bins
+    color : str, default='#577788' - Hex color
+    show_mean_line : bool, default=True - Show mean line
+    show_median_line : bool, default=False - Show median line
     
-    Returns
-    -------
-    dict
-        Contains plot_name, url, n_values, statistics, active_plots
+    Returns: dict with plot_name, plot_id, url, n_values, statistics (mean/median/min/max), active_plots, message
     
-    Examples
-    --------
-    >>> add_histogram(
-    ...     input_filename="dataset_A1B2C3D4.csv",
-    ...     column="MW",
-    ...     project_manifest_path="/path/to/manifest.json",
-    ...     plot_name="Molecular Weight Distribution",
-    ...     explanation="Distribution of molecular weights"
-    ... )
+    Example: add_histogram("data_ABC123.csv", "MW", "/path/manifest.json", "MW Distribution", "Molecular weight histogram")
     """
     global _active_plots, _PORT
     
