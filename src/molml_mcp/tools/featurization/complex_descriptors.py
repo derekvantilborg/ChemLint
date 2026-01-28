@@ -5,6 +5,7 @@ from molml_mcp.tools.featurization.supported.rdkit import smiles_to_rdkit_fp_dat
 from molml_mcp.tools.featurization.supported.cats import smiles_to_cats_dataset
 from molml_mcp.tools.featurization.supported.atompair import smiles_to_atompair_dataset
 from molml_mcp.tools.featurization.supported.torsion import smiles_to_torsion_dataset
+from molml_mcp.tools.featurization.supported.avalon import smiles_to_avalon_dataset
 
 
 def get_all_complex_descriptor_tools():
@@ -15,6 +16,7 @@ def get_all_complex_descriptor_tools():
         smiles_to_rdkit_fp_dataset,
         smiles_to_cats_dataset,
         smiles_to_atompair_dataset,
-        smiles_to_torsion_dataset
+        smiles_to_torsion_dataset,
+        smiles_to_avalon_dataset
     ]
 
