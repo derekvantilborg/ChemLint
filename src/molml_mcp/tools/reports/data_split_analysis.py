@@ -2256,9 +2256,10 @@ def data_split_quality_analysis(
     if 'error' in split_char:
         lines.append(f"Error: {split_char['error']}")
     else:
-        train_size = split_char.get('train_size', 'N/A')
-        test_size = split_char.get('test_size', 'N/A')
-        val_size = split_char.get('val_size')
+        sizes = split_char.get('sizes', {})
+        train_size = sizes.get('train', 'N/A')
+        test_size = sizes.get('test', 'N/A')
+        val_size = sizes.get('val')
         
         lines.append(f"Train Size: {train_size} molecules" if train_size != 'N/A' else f"Train Size: {train_size}")
         lines.append(f"Test Size:  {test_size} molecules" if test_size != 'N/A' else f"Test Size:  {test_size}")
@@ -2266,42 +2267,56 @@ def data_split_quality_analysis(
             lines.append(f"Val Size:   {val_size} molecules" if val_size != 'N/A' else f"Val Size:   {val_size}")
         lines.append("")
         
-        split_ratios = split_char.get('split_ratios')
-        if split_ratios and split_ratios.get('train_pct'):
-            ratios = split_char['split_ratios']
+        percentages = split_char.get('percentages', {})
+        if percentages:
             lines.append("Split Ratios:")
-            lines.append(f"  - Train: {ratios.get('train_pct', 0):.1f}%")
-            lines.append(f"  - Test:  {ratios.get('test_pct', 0):.1f}%")
-            if ratios.get('val_pct'):
-                lines.append(f"  - Val:   {ratios.get('val_pct', 0):.1f}%")
+            if 'train' in percentages:
+                lines.append(f"  - Train: {percentages.get('train', 0):.1f}%")
+            if 'test' in percentages:
+                lines.append(f"  - Test:  {percentages.get('test', 0):.1f}%")
+            if 'val' in percentages:
+                lines.append(f"  - Val:   {percentages.get('val', 0):.1f}%")
             lines.append("")
         
         if split_char.get('task_type') == 'classification':
-            n_classes = split_char.get('n_classes', '?')
+            class_dist = split_char.get('class_distribution', {})
+            n_classes = class_dist.get('train', {}).get('n_classes', '?') if 'train' in class_dist else '?'
             lines.append(f"Task Type: Classification ({n_classes} classes)")
             lines.append("")
             
             # Train class distribution
-            if split_char.get('train_class_distribution'):
+            if 'train' in class_dist and 'counts' in class_dist['train']:
                 lines.append("Train Class Distribution:")
-                for cls, count in split_char['train_class_distribution'].items():
-                    pct = split_char.get('train_class_percentages', {}).get(cls, 0)
+                train_counts = class_dist['train']['counts']
+                train_props = class_dist['train'].get('proportions', {})
+                for cls, count in train_counts.items():
+                    pct = train_props.get(cls, 0) * 100
                     lines.append(f"  - Class {cls}: {count} ({pct:.1f}%)")
                 lines.append("")
             
             # Test class distribution
-            if split_char.get('test_class_distribution'):
+            if 'test' in class_dist and 'counts' in class_dist['test']:
                 lines.append("Test Class Distribution:")
-                for cls, count in split_char['test_class_distribution'].items():
-                    pct = split_char.get('test_class_percentages', {}).get(cls, 0)
+                test_counts = class_dist['test']['counts']
+                test_props = class_dist['test'].get('proportions', {})
+                for cls, count in test_counts.items():
+                    pct = test_props.get(cls, 0) * 100
                     lines.append(f"  - Class {cls}: {count} ({pct:.1f}%)")
                 lines.append("")
         else:
             lines.append(f"Task Type: Regression")
             lines.append("")
-    
-    lines.append(f"Overall Severity: {split_char.get('severity', 'UNKNOWN')}")
-    lines.append("")
+        
+        # Determine severity based on flags
+        flags = split_char.get('flags', {})
+        severity = 'OK'
+        if flags.get('empty_splits') or flags.get('small_splits'):
+            severity = 'CRITICAL'
+        elif flags.get('imbalanced_splits'):
+            severity = 'MEDIUM'
+        
+        lines.append(f"Overall Severity: {severity}")
+        lines.append("")
     
     # 2. Exact Duplicates
     lines.append("=" * 80)
