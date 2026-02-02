@@ -2270,11 +2270,11 @@ def data_split_quality_analysis(
         percentages = split_char.get('percentages', {})
         if percentages:
             lines.append("Split Ratios:")
-            if 'train' in percentages:
+            if 'train' in percentages and percentages.get('train') is not None:
                 lines.append(f"  - Train: {percentages.get('train', 0):.1f}%")
-            if 'test' in percentages:
+            if 'test' in percentages and percentages.get('test') is not None:
                 lines.append(f"  - Test:  {percentages.get('test', 0):.1f}%")
-            if 'val' in percentages:
+            if 'val' in percentages and percentages.get('val') is not None:
                 lines.append(f"  - Val:   {percentages.get('val', 0):.1f}%")
             lines.append("")
         
