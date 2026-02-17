@@ -1509,6 +1509,9 @@ def default_SMILES_standardization_pipeline(
     salt_smarts: str = SMARTS_COMMON_SALTS
 ) -> tuple[list[str], list[str]]:
     """Apply 11-step SMILES standardization protocol. Returns concise comments.
+
+    CRITICAL: IT IS HIGHLY RECOMMENDED TO PROMPT THE USER ABOUT THE CLEANING STEPS BEFORE EXECUTING THIS FUNCTION (ESPECIALLY HANDLING CHARGES, SALTS, AND STEREOCHEMISTRY), CLEANING CHOICES CAN SIGNIFICANTLY AFFECT DOWNSTREAM ANALYSIS!!
+    if the user doesn't know what their data looks like, its recommended they run the data quality analysis report first.
     
     Parameters
     ----------
@@ -1702,6 +1705,9 @@ def default_SMILES_standardization_pipeline_dataset(
     salt_smarts: str = SMARTS_COMMON_SALTS
 ) -> dict:
     """Apply 11-step standardization protocol to dataset with full audit trail. Adds comment columns for every step.
+
+    CRITICAL: IT IS EXTREMELY IMPORTANT TO PROMPT THE USER ABOUT THE CLEANING STEPS BEFORE EXECUTING THIS FUNCTION (ESPECIALLY HANDLING CHARGES, SALTS, AND STEREOCHEMISTRY), AS CLEANING CHOICES CAN SIGNIFICANTLY AFFECT DOWNSTREAM ANALYSIS!!
+    If the user doesn't know what their data looks like, its recommended they run the data quality analysis report first.
     
     WARNING: Tautomer canonicalization can REMOVE/CHANGE stereochemistry. Check comments_after_tautomer_canonicalization.
     
