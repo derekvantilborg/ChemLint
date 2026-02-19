@@ -12,9 +12,9 @@ from typing import Any, Dict, List, Optional
 
 def import_csv_from_path(file_path: str, project_manifest_path: str, filename: str, explanation: str) -> dict:
     """
-    🚀 ENTRY POINT: Import a CSV file from a filesystem path into the project.
+    ENTRY POINT: Import a CSV file from a filesystem path into the project.
     
-    ⚠️ USE THIS FUNCTION when the user provides a file path like "/path/to/data.csv"
+    CRITICAL: USE THIS FUNCTION when the user provides a file path like "/path/to/data.csv"
     
     This is the PRIMARY way to bring external CSV files into the MCP project system.
     After calling this function, use the returned output_filename for all subsequent
@@ -40,7 +40,6 @@ def import_csv_from_path(file_path: str, project_manifest_path: str, filename: s
         - output_filename: Use this for all future operations on this dataset
         - n_rows: Number of rows loaded
         - columns: List of column names
-        - preview: First 5 rows
     """
     import pandas as pd
 
@@ -52,7 +51,7 @@ def import_csv_from_path(file_path: str, project_manifest_path: str, filename: s
         "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
-        "preview": df.head(5).to_dict(orient="records"),
+        "note": "Datasets are imported in a containerized directory, attempts to access the original file path may not work. Use MolML-MCP operations to interact with files through the manifest system after importing.",
     }
 
 
@@ -88,7 +87,7 @@ def import_csv_from_text(csv_content: str, project_manifest_path: str, filename:
         "output_filename": output_filename,
         "n_rows": len(df),
         "columns": list(df.columns),
-        "preview": df.head(5).to_dict(orient="records"),
+        "note": "Datasets are imported in a containerized directory, attempts to access the original file path may not work. Use MolML-MCP operations to interact with files through the manifest system after importing.",
     }
 
 
@@ -124,6 +123,8 @@ def get_dataset_head(project_manifest_path: str, input_filename: str, n_rows: in
         "n_rows_total": n_total,
         "columns": list(df.columns),
         "rows": head_df.to_dict(orient="records"),
+        "note": "Datasets are imported in a containerized directory, attempts to access the original file path may not work. Use MolML-MCP operations to interact with files through the manifest system after importing.",
+
     }
 
 
