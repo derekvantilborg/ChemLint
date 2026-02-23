@@ -314,6 +314,10 @@ def create_project_manifest(path: str, project_name: str) -> dict:
     
     **IMPORTANT**: You should create a manifest BEFORE performing any operations that
     store resources. Ask the user to provide a project directory path and name.
+
+    **CRITICAL**: Interact with files through the manifest system. Do NOT attempt to access files 
+    directly by path after importing or creating them. Always use the manifest to load resources, 
+    as it is the source of truth for all tracked files and their metadata.
     
     Args:
         path: Directory where manifest and data files will be stored
