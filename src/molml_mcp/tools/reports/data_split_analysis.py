@@ -1831,8 +1831,6 @@ def analyze_split_quality(
     min_split_size: int = 50,
     imbalance_threshold: float = 0.1,
     similarity_threshold: float = 0.9,
-    activity_cliff_similarity: float = 0.8,
-    activity_cliff_fold_diff: float = 10.0,
     alpha: float = 0.05,
     min_occurrence_threshold: int = 2,
     max_examples: int = 10
@@ -1868,10 +1866,6 @@ def analyze_split_quality(
         Class imbalance threshold.
     similarity_threshold : float, default=0.9
         Tanimoto similarity threshold for leakage.
-    activity_cliff_similarity : float, default=0.8
-        Similarity threshold for activity cliffs.
-    activity_cliff_fold_diff : float, default=10.0
-        Fold difference for regression activity cliffs.
     alpha : float, default=0.05
         Significance level for statistical tests.
     min_occurrence_threshold : int, default=2
@@ -1907,8 +1901,6 @@ def analyze_split_quality(
                 'min_split_size': min_split_size,
                 'imbalance_threshold': imbalance_threshold,
                 'similarity_threshold': similarity_threshold,
-                'activity_cliff_similarity': activity_cliff_similarity,
-                'activity_cliff_fold_diff': activity_cliff_fold_diff,
                 'alpha': alpha,
                 'min_occurrence_threshold': min_occurrence_threshold,
                 'max_examples': max_examples
@@ -1935,7 +1927,7 @@ def analyze_split_quality(
     result['similarity_leakage'] = _detect_similarity_leakage(
         train_path, test_path, project_manifest_path,
         smiles_col, label_col, val_path, similarity_threshold,
-        activity_cliff_similarity, activity_cliff_fold_diff, max_examples
+        max_examples=max_examples
     )
     
     # 4. Detect scaffold leakage
@@ -2062,11 +2054,6 @@ def analyze_split_quality(
                 for k in ['test_vs_train', 'val_vs_train', 'val_vs_test']
                 if result['similarity_leakage'].get(k) is not None
             ),
-            'activity_cliffs': sum(
-                result['similarity_leakage'].get(k, {}).get('n_activity_cliffs', 0)
-                for k in ['test_vs_train', 'val_vs_train', 'val_vs_test']
-                if result['similarity_leakage'].get(k) is not None
-            ),
             'scaffold_overlap_pct': result['scaffold_leakage'].get('train_test_overlap', {}).get('pct_split2_in_split1', 0),
             'stereoisomer_pairs': result['stereoisomer_tautomer_leakage'].get('total_stereoisomer_pairs', 0),
             'tautomer_pairs': result['stereoisomer_tautomer_leakage'].get('total_tautomer_pairs', 0),
@@ -2094,8 +2081,6 @@ def data_split_quality_analysis(
     min_split_size: int = 50,
     imbalance_threshold: float = 0.1,
     similarity_threshold: float = 0.9,
-    activity_cliff_similarity: float = 0.8,
-    activity_cliff_fold_diff: float = 10.0,
     alpha: float = 0.05,
     min_occurrence_threshold: int = 2,
     max_examples: int = 10
@@ -2106,7 +2091,7 @@ def data_split_quality_analysis(
     Comprehensive train/test/val split quality analysis with 8 diagnostic checks:
     1. Split characteristics (sizes, ratios, class balance)
     2. Exact duplicate detection (CRITICAL leakage)
-    3. Similarity-based leakage (high similarity pairs, activity cliffs)
+    3. Similarity-based leakage (high similarity pairs)
     4. Scaffold overlap (structural leakage)
     5. Stereoisomer/tautomer leakage (subtle molecular variants)
     6. Physicochemical property distributions (bias detection)
@@ -2140,10 +2125,6 @@ def data_split_quality_analysis(
         Class imbalance threshold.
     similarity_threshold : float, default=0.9
         Tanimoto similarity threshold for leakage.
-    activity_cliff_similarity : float, default=0.8
-        Similarity threshold for activity cliffs.
-    activity_cliff_fold_diff : float, default=10.0
-        Fold difference for regression activity cliffs.
     alpha : float, default=0.05
         Significance level for statistical tests.
     min_occurrence_threshold : int, default=2
@@ -2176,8 +2157,6 @@ def data_split_quality_analysis(
         min_split_size=min_split_size,
         imbalance_threshold=imbalance_threshold,
         similarity_threshold=similarity_threshold,
-        activity_cliff_similarity=activity_cliff_similarity,
-        activity_cliff_fold_diff=activity_cliff_fold_diff,
         alpha=alpha,
         min_occurrence_threshold=min_occurrence_threshold,
         max_examples=max_examples
