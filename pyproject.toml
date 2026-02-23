@@ -23,7 +23,6 @@ dependencies = [
     "pytest>=9.0.2",
     "plotly>=6.5.2",
     "dash>=3.3.0",
-    "deepchem>=2.8.0",
 ]
 
 [tool.setuptools]
