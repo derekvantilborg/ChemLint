@@ -370,6 +370,6 @@ Special thanks to the **RDKit community** for maintaining the foundational chemi
 
 **Derek van Tilborg** - [@derekvantilborg](https://derekvantilborg.com/)
 
-**Project Link**: [https://github.com/derekvantilborg/ChemLint](https://github.com/derekvantilborg/ChemLint)
+**Project Link**: [https://github.com/molML/ChemLint](https://github.com/molML/ChemLint)
 
-**Issues & Feature Requests**: [GitHub Issues](https://github.com/derekvantilborg/ChemLint/issues)
+**Issues & Feature Requests**: [GitHub Issues](https://github.com/molML/ChemLint/issues)
